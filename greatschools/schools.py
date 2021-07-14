@@ -14,12 +14,13 @@ import logging
 import regex as re
 from fractions import Fraction
 
-DIR = os.path.dirname(os.path.realpath(__file__))
-ROOT_DIR = os.path.abspath(os.path.join(DIR, os.pardir))
+MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
+MOD_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
+ROOT_DIR = os.path.abspath(os.path.join(MOD_DIR, os.pardir))
 RES_DIR = os.path.join(ROOT_DIR, 'resources')
 SAVE_DIR = os.path.join(ROOT_DIR, 'save')
 USERAGENTS_FILE = os.path.join(RES_DIR, 'useragents.zip.jl')
-REPOSITORY_DIR = os.path.join(SAVE_DIR, 'greatschools')
+REPO_DIR = os.path.join(SAVE_DIR, 'greatschools')
 QUEUE_FILE = os.path.join(SAVE_DIR, 'greatschools', 'links.zip.csv')
 REPORT_FILE = os.path.join(SAVE_DIR, 'greatschools', 'schools.csv')
 if not ROOT_DIR in sys.path: sys.path.append(ROOT_DIR)
@@ -71,8 +72,8 @@ crawler_xpath = r"//div[@id='NearbySchools']//div[@class='nearby-schools']//a[co
 
 def GID_parser(string): return string.replace("https://www.greatschools.org/", "")
 
-address_parser = lambda x: Address.fromsearch(x)
-price_parser = lambda x: Price.fromsearch(x)
+address_parser = lambda x: str(Address.fromsearch(x))
+price_parser = lambda x: str(Price.fromsearch(x))
 link_parser = lambda x: ''.join(['https', '://', 'www.greatschools.org', x]) if not str(x).startswith(''.join(['https', '://', 'www.greatschools.org'])) else x   
 grades_parser = lambda x: str(x).strip().replace('-', '|')
 score_parser = lambda x: int(str(x).strip().split('/')[0]) if bool(str(x).strip()) else None
@@ -154,49 +155,49 @@ class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools
     def location(self, *args, GID, **kwargs):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.ADDRESS, Greatschools_Schools_WebContents.DISTRICT)]): return  
         data = {'GID':GID}    
-        if bool(self[Greatschools_Schools_WebContents.ADDRESS]): data['address'] = str(self[Greatschools_Schools_WebContents.ADDRESS].data())
+        if bool(self[Greatschools_Schools_WebContents.ADDRESS]): data['address'] = self[Greatschools_Schools_WebContents.ADDRESS].data()
         if bool(self[Greatschools_Schools_WebContents.DISTRICT]):
-            data['district'] = str(self[Greatschools_Schools_WebContents.DISTRICT].data())
-            data['districtlink'] = str(self[Greatschools_Schools_WebContents.DISTRICT].link())
+            data['district'] = self[Greatschools_Schools_WebContents.DISTRICT].data()
+            data['districtlink'] = self[Greatschools_Schools_WebContents.DISTRICT].link()
         yield data
     
     def schools(self, *args, GID, **kwargs): 
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.SCHOOLNAME, Greatschools_Schools_WebContents.SCHOOLTYPE, Greatschools_Schools_WebContents.GRADES)]): return          
         data = {'GID':GID}
-        if bool(self[Greatschools_Schools_WebContents.SCHOOLNAME]): data['schoolname'] = str(self[Greatschools_Schools_WebContents.SCHOOLNAME].data())
-        if bool(self[Greatschools_Schools_WebContents.SCHOOLTYPE]): data['schooltype'] = str(self[Greatschools_Schools_WebContents.SCHOOLTYPE].data())
-        if bool(self[Greatschools_Schools_WebContents.GRADES]): data['grades'] = str(self[Greatschools_Schools_WebContents.GRADES].data())       
+        if bool(self[Greatschools_Schools_WebContents.SCHOOLNAME]): data['schoolname'] = self[Greatschools_Schools_WebContents.SCHOOLNAME].data()
+        if bool(self[Greatschools_Schools_WebContents.SCHOOLTYPE]): data['schooltype'] = self[Greatschools_Schools_WebContents.SCHOOLTYPE].data()
+        if bool(self[Greatschools_Schools_WebContents.GRADES]): data['grades'] = self[Greatschools_Schools_WebContents.GRADES].data()       
         yield data
 
     def scores(self, *args, GID, **kwargs):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.OVERALLSCORE, Greatschools_Schools_WebContents.ACADEMICSCORE, Greatschools_Schools_WebContents.TESTSCORE)]): return         
         data = {'GID':GID}
-        if bool(self[Greatschools_Schools_WebContents.OVERALLSCORE]): data['overallscore'] = str(self[Greatschools_Schools_WebContents.OVERALLSCORE].data())
-        if bool(self[Greatschools_Schools_WebContents.ACADEMICSCORE]): data['academicscore'] = str(self[Greatschools_Schools_WebContents.ACADEMICSCORE].data())
-        if bool(self[Greatschools_Schools_WebContents.TESTSCORE]): data['testscore'] = str(self[Greatschools_Schools_WebContents.TESTSCORE].data())
+        if bool(self[Greatschools_Schools_WebContents.OVERALLSCORE]): data['overallscore'] = self[Greatschools_Schools_WebContents.OVERALLSCORE].data()
+        if bool(self[Greatschools_Schools_WebContents.ACADEMICSCORE]): data['academicscore'] = self[Greatschools_Schools_WebContents.ACADEMICSCORE].data()
+        if bool(self[Greatschools_Schools_WebContents.TESTSCORE]): data['testscore'] = self[Greatschools_Schools_WebContents.TESTSCORE].data()
         yield data
     
     def college(self, *args, GID, **kwargs):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.GRADUATION, Greatschools_Schools_WebContents.SAT11, Greatschools_Schools_WebContents.SAT12, Greatschools_Schools_WebContents.ACT)]): return  
         data = {'GID':GID}
-        if bool(self[Greatschools_Schools_WebContents.GRADUATION]): data['graduation'] = str(self[Greatschools_Schools_WebContents.GRADUATION].data())
-        if bool(self[Greatschools_Schools_WebContents.SAT11]): data['SAT11'] = str(self[Greatschools_Schools_WebContents.SAT11].data())
-        if bool(self[Greatschools_Schools_WebContents.SAT12]): data['SAT12'] = str(self[Greatschools_Schools_WebContents.SAT12].data())
-        if bool(self[Greatschools_Schools_WebContents.ACT]): data['ACT'] = str(self[Greatschools_Schools_WebContents.ACT].data())
+        if bool(self[Greatschools_Schools_WebContents.GRADUATION]): data['graduation'] = self[Greatschools_Schools_WebContents.GRADUATION].data()
+        if bool(self[Greatschools_Schools_WebContents.SAT11]): data['SAT11'] = self[Greatschools_Schools_WebContents.SAT11].data()
+        if bool(self[Greatschools_Schools_WebContents.SAT12]): data['SAT12'] = self[Greatschools_Schools_WebContents.SAT12].data()
+        if bool(self[Greatschools_Schools_WebContents.ACT]): data['ACT'] = self[Greatschools_Schools_WebContents.ACT].data()
         yield data        
 
     def teachers(self, *args, GID, **kwargs):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.EXPERIENCE, Greatschools_Schools_WebContents.STUDENTTEACHERS)]): return        
         data = {'GID':GID}
-        if bool(self[Greatschools_Schools_WebContents.EXPERIENCE]): data['experience'] = str(self[Greatschools_Schools_WebContents.EXPERIENCE].data())           
-        if bool(self[Greatschools_Schools_WebContents.STUDENTTEACHERS]): data['studentteachers'] = str(self[Greatschools_Schools_WebContents.STUDENTTEACHERS].data())
+        if bool(self[Greatschools_Schools_WebContents.EXPERIENCE]): data['experience'] = self[Greatschools_Schools_WebContents.EXPERIENCE].data()         
+        if bool(self[Greatschools_Schools_WebContents.STUDENTTEACHERS]): data['studentteachers'] = self[Greatschools_Schools_WebContents.STUDENTTEACHERS].data()
         yield data
     
     def testing(self, *args, GID, **kwargs):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.SUBJECTKEYS, Greatschools_Schools_WebContents.SUBJECTVALUES)]): return           
         data = {'GID':GID}        
         assert len(self[Greatschools_Schools_WebContents.SUBJECTKEYS]) == len(self[Greatschools_Schools_WebContents.SUBJECTVALUES])
-        data.update({str(key):str(value) for key, value in zip(self[Greatschools_Schools_WebContents.SUBJECTKEYS], self[Greatschools_Schools_WebContents.SUBJECTVALUES])})
+        data.update({key:str(value) for key, value in zip(self[Greatschools_Schools_WebContents.SUBJECTKEYS], self[Greatschools_Schools_WebContents.SUBJECTVALUES])})
         yield data
 
     def demographics(self, *args, GID, **kwargs):
@@ -204,7 +205,7 @@ class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools
         assert len(self[Greatschools_Schools_WebContents.RACEKEYS]) == len(self[Greatschools_Schools_WebContents.RACEVALUES])
         data = {key:value for key, value in zip(self[Greatschools_Schools_WebContents.RACEKEYS], self[Greatschools_Schools_WebContents.RACEVALUES]) if key in ('White', 'Hispanic', 'Black', 'Asian')}
         data['Other'] = max(100 - sum(list(data.values())), 0)
-        data = {str(key):str(value) for key, value in data.items()}
+        data = {key:str(value) for key, value in data.items()}
         data.update({'GID':GID})
         yield data 
         
@@ -255,7 +256,7 @@ class Greatschools_Schools_WebDownloader(WebDownloader, delay=30, attempts=10):
 def main(*args, **kwargs): 
     webdelayer = Greatschools_Schools_WebDelayer('random', wait=(60, 120))
     webqueue = Greatschools_Schools_WebQueue(REPORT_FILE, *args, days=30, **kwargs)
-    webdownloader = Greatschools_Schools_WebDownloader(REPOSITORY_DIR, REPORT_FILE, *args, delayer=webdelayer, queue=webqueue, **kwargs)
+    webdownloader = Greatschools_Schools_WebDownloader(REPO_DIR, REPORT_FILE, *args, delayer=webdelayer, queue=webqueue, **kwargs)
     webdownloader(*args, **kwargs)
     while True: 
         if webdownloader.off: break
@@ -267,6 +268,7 @@ def main(*args, **kwargs):
 
 
 if __name__ == '__main__': 
+    sys.argv += ['city=Bakersfield', 'state=CA']
     logging.basicConfig(level='INFO', format="[%(levelname)s, %(threadName)s]:  %(message)s")
     inputparser = InputParser(proxys={'assign':'=', 'space':'_'}, parsers={}, default=str)  
     inputparser(*sys.argv[1:])

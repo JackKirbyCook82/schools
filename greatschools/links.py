@@ -12,8 +12,9 @@ import warnings
 import logging
 import regex as re
 
-DIR = os.path.dirname(os.path.realpath(__file__))
-ROOT_DIR = os.path.abspath(os.path.join(DIR, os.pardir))
+MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
+MOD_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
+ROOT_DIR = os.path.abspath(os.path.join(MOD_DIR, os.pardir))
 RES_DIR = os.path.join(ROOT_DIR, 'resources')
 SAVE_DIR = os.path.join(ROOT_DIR, 'save')
 REPO_DIR = os.path.join(SAVE_DIR, 'greatschools')
