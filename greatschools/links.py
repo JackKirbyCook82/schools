@@ -71,17 +71,17 @@ pagination_parser = lambda x: str(int(str(x).strip()))
 
 class Greatschools_Captcha(WebCaptcha, xpath=captcha_xpath, timeout=2): pass
 class Greatschools_BadRequest(WebBadRequest, xpath=badrequest_xpath, timeout=2): pass
-class Greatschools_Zipcode(WebText.update(dataparser=zipcode_parser), xpath=zipcode_xpath): pass
-class Greatschools_Results(WebText.update(dataparser=results_parser), xpath=results_xpath): pass
+class Greatschools_Zipcode(WebText.update(parsers={'data':zipcode_parser}), xpath=zipcode_xpath): pass
+class Greatschools_Results(WebText.update(parsers={'data':results_parser}), xpath=results_xpath): pass
 class Greatschools_Contents(WebClickableList, xpath=contents_xpath): pass
-class Greatschools_ContentsLink(WebLink.update(dataparser=GID_parser), xpath=link_contents_xpath, parent=Greatschools_Contents, key='link'): pass
-class Greatschools_ContentsAddress(WebText.update(dataparser=address_parser, optional=True), xpath=address_contents_xpath, parent=Greatschools_Contents, key='address'): pass
-class Greatschools_ContentsName(WebText.update(dataparser=name_parser, optional=True), xpath=name_contents_xpath, parent=Greatschools_Contents, key='name'): pass
-class Greatschools_ContentsType(WebText.update(dataparser=type_parser, optional=True), xpath=type_contents_xpath, parent=Greatschools_Contents, key='type'): pass
-class Greatschools_Current(WebText.update(dataparser=pagination_parser), xpath=current_xpath): pass
+class Greatschools_ContentsLink(WebLink.update(parsers={'data':GID_parser}), xpath=link_contents_xpath, parent=Greatschools_Contents, key='link'): pass
+class Greatschools_ContentsAddress(WebText.update(parsers={'data':address_parser}, optional=True), xpath=address_contents_xpath, parent=Greatschools_Contents, key='address'): pass
+class Greatschools_ContentsName(WebText.update(parsers={'data':name_parser}, optional=True), xpath=name_contents_xpath, parent=Greatschools_Contents, key='name'): pass
+class Greatschools_ContentsType(WebText.update(parsers={'data':type_parser}, optional=True), xpath=type_contents_xpath, parent=Greatschools_Contents, key='type'): pass
+class Greatschools_Current(WebText.update(parsers={'data':pagination_parser}), xpath=current_xpath): pass
 class Greatschools_Previous(WebClickable, xpath=previous_xpath): pass
 class Greatschools_Next(WebClickable, xpath=nextpage_xpath): pass
-class Greatschools_Pagination(WebClickableDict.update(keyparser=pagination_parser), xpath=pagination_xpath): pass
+class Greatschools_Pagination(WebClickableDict.update(parsers={'key':pagination_parser}), xpath=pagination_xpath): pass
 
 class Greatschools_Previous_MoveToClick(WebMoveToClick, on=Greatschools_Previous): pass
 class Greatschools_Next_MoveToClick(WebMoveToClick, on=Greatschools_Next): pass

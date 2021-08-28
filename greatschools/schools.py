@@ -45,29 +45,29 @@ LOGGER = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
 
 
-address_xpath = r"(//div[contains(@class, 'address')]//span[@class='content'])[1]"
-district_xpath = r"//div[contains(@class, 'district')]/a"
-schoolname_xpath = r"//h1[@class='school-name']"
-schooltype_xpath = r"(//div[@class='school-info']/div[contains(@class, 'item') and ./div[@class='label']/text()='Type']/div)[2]"
-grades_xpath = r"(//div[@class='school-info']/div[contains(@class, 'item') and ./div[@class='label']/text()='Grades']/div)[2]"
-overallscore_xpath = r"//div[contains(@class, 'rating-with-label__rating')]"
-academicscore_xpath = r"//div[contains(@class, 'toc-entry') and ./a[@data-ga-click-label='Academic progress']]/a/span[contains(@class, 'gs-rating circle')]"
-testscore_xpath = r"//div[contains(@class, 'toc-entry') and ./a[@data-ga-click-label='Test scores']]/a/span[contains(@class, 'gs-rating circle')]"
-subjectkeys_xpath = r"//div[@id='TestScores']//div[contains(@class, 'test-score-container')]//div[contains(@class, 'subject') and not(./span)]"
-subjectvalues_xpath = r"//div[@id='TestScores']//div[contains(@class, 'test-score-container')]//div[contains(@class, 'score') and not(./span)]"
-racekeys_xpath = r"//div[@id='Students']//div[contains(@class, 'legend-separator')]/div[@class='legend-title'][1]"
-racevalues_xpath = r"//div[@id='Students']//div[contains(@class, 'legend-separator')]/div[@class='legend-title'][2]"
-graduation_xpath = r"//div[@id='College_readiness']//div[contains(@class, 'test-score-container') and contains(./div[contains(@class, 'subject')], 'graduation rate')]//div[@class='score']"
-sat11ready_xpath = r"//div[@id='College_readiness']//div[contains(@class, 'test-score-container') and contains(./div[contains(@class, 'subject')], 'SAT 11th')]//div[@class='score']"
-sat12ready_xpath = r"//div[@id='College_readiness']//div[contains(@class, 'test-score-container') and contains(./div[contains(@class, 'subject')], 'SAT 12th')]//div[@class='score']"
-actready_xpath = r"//div[@id='College_readiness']//div[contains(@class, 'test-score-container') and contains(./div[contains(@class, 'subject')], 'ACT college readiness rate')]//div[@class='score']"
-lowincome_xpath = r"//div[@id='Students']//div[@class='subgroups']//div[contains(@class, 'subgroup')]//div[contains(@id, 'lunch-program')]//div[contains(@id, 'highcharts')]"
-noenglish_xpath = r"//div[@id='Students']//div[@class='subgroups']//div[contains(@class, 'subgroup')]//div[@id='english-learners']//div[contains(@id, 'highcharts')]"
-experience_xpath = r"//div[@id='TeachersStaff']//div[contains(@class, 'test-score-container') and contains(./div[contains(@class, 'subject')], 'experience')]//div[@class='score']"
-certification_xpath = r"//div[@id='TeachersStaff']//div[contains(@class, 'test-score-container') and contains(./div[contains(@class, 'subject')], 'certified')]//div[@class='score']"
-salary_xpath = r"//div[@id='TeachersStaff']//div[@class='rating-score-item']/div[@class='row' and contains(./div[contains(@class, 'label')], 'Average teacher salary')]/div/div[contains(@class, 'rating-score-item')][1]"
-studentteachers_xpath = r"//div[@id='TeachersStaff']//div[@class='rating-score-item']/div[@class='row' and contains(./div[contains(@class, 'label')], 'Students per teacher')]/div/div[contains(@class, 'rating-score-item')][1]"
-crawler_xpath = r"//div[@id='NearbySchools']//div[@class='nearby-schools']//a[contains(@class, 'Click')]"
+address_xpaths = []
+district_xpaths = []
+schoolname_xpaths = []
+schooltype_xpaths = []
+grades_xpaths = []
+overallscore_xpaths = []
+academicscore_xpaths = []
+testscore_xpaths = []
+subjectkeys_xpaths = []
+subjectvalues_xpaths = []
+racekeys_xpaths = []
+racevalues_xpaths = []
+graduation_xpaths = []
+sat11ready_xpaths = []
+sat12ready_xpaths = []
+actready_xpaths = []
+lowincome_xpaths = []
+noenglish_xpaths = []
+experience_xpaths = []
+certification_xpaths = []
+salary_xpaths = []
+studentteachers_xpaths = [] 
+crawler_xpaths = []
 
 
 def GID_parser(string): return string.replace("https://www.greatschools.org/", "")
@@ -84,27 +84,27 @@ crawler_keyparser = lambda x: hash(frozenset({'GID':GID_parser(x)}))
 crawler_linkparser = lambda x: ''.join(['https', '://', 'www.greatschools.org', x]) if not str(x).startswith(''.join(['https', '://', 'www.greatschools.org'])) else x     
 
 
-class Greatschools_Address(WebText.update(dataparser=address_parser), xpath=address_xpath): pass
-class Greatschools_District(WebText.update(linkparser=link_parser), xpath=district_xpath): pass
-class Greatschools_SchoolName(WebText, xpath=schoolname_xpath): pass
-class Greatschools_SchoolType(WebText, xpath=schooltype_xpath): pass
-class Greatschools_Grades(WebText.update(dataparser=grades_parser), xpath=grades_xpath): pass
-class Greatschools_OverallScore(WebText.update(dataparser=score_parser), xpath=overallscore_xpath): pass
-class Greatschools_AcademicScore(WebText.update(dataparser=score_parser), xpath=academicscore_xpath): pass
-class Greatschools_TestScore(WebText.update(dataparser=score_parser), xpath=testscore_xpath): pass
-class Greatschools_SubjectKeys(WebTextList, xpath=subjectkeys_xpath): pass
-class Greatschools_SubjectValues(WebTextList.update(dataparser=percent_parser), xpath=subjectvalues_xpath): pass
-class Greatschools_RaceKeys(WebTextList, xpath=racekeys_xpath): pass
-class Greatschools_RaceValues(WebTextList.update(dataparser=percent_parser), xpath=racevalues_xpath): pass
-class Greatschools_Graduation(WebText.update(dataparser=percent_parser), xpath=graduation_xpath): pass
-class Greatschools_SAT11(WebText.update(dataparser=percent_parser), xpath=sat11ready_xpath): pass
-class Greatschools_SAT12(WebText.update(dataparser=percent_parser), xpath=sat12ready_xpath): pass
-class Greatschools_ACT(WebText.update(dataparser=percent_parser), xpath=actready_xpath): pass
-class Greatschools_LowIncome(WebText.update(dataparser=graphpercent_parser), xpath=lowincome_xpath): pass
-class Greatschools_NoEnglish(WebText.update(dataparser=graphpercent_parser), xpath=noenglish_xpath): pass
-class Greatschools_Experience(WebText.update(dataparser=percent_parser), xpath=experience_xpath): pass
-class Greatschools_StudentTeachers(WebText.update(dataparser=ratio_parser), xpath=studentteachers_xpath): pass
-class Greatschools_Crawler(WebLinkDict.update(keyparser=crawler_keyparser, linkparser=crawler_linkparser), xpath=crawler_xpath): pass
+class Greatschools_Address(WebText.update(parsers={'data':address_parser}), xpaths=address_xpaths): pass
+class Greatschools_District(WebText.update(parsers={'link':link_parser}), xpaths=district_xpaths): pass
+class Greatschools_SchoolName(WebText, xpaths=schoolname_xpaths): pass
+class Greatschools_SchoolType(WebText, xpaths=schooltype_xpaths): pass
+class Greatschools_Grades(WebText.update(parsers={'data':grades_parser}), xpaths=grades_xpaths): pass
+class Greatschools_OverallScore(WebText.update(parsers={'data':score_parser}), xpaths=overallscore_xpaths): pass
+class Greatschools_AcademicScore(WebText.update(parsers={'data':score_parser}), xpaths=academicscore_xpaths): pass
+class Greatschools_TestScore(WebText.update(parsers={'data':score_parser}), xpaths=testscore_xpaths): pass
+class Greatschools_SubjectKeys(WebTextList, xpaths=subjectkeys_xpaths): pass
+class Greatschools_SubjectValues(WebTextList.update(parsers={'data':percent_parser}), xpaths=subjectvalues_xpaths): pass
+class Greatschools_RaceKeys(WebTextList, xpaths=racekeys_xpaths): pass
+class Greatschools_RaceValues(WebTextList.update(parsers={'data':percent_parser}), xpaths=racevalues_xpaths): pass
+class Greatschools_Graduation(WebText.update(parsesr={'data':percent_parser}), xpaths=graduation_xpaths): pass
+class Greatschools_SAT11(WebText.update(parsers={'data':percent_parser}), xpaths=sat11ready_xpaths): pass
+class Greatschools_SAT12(WebText.update(parsers={'data':percent_parser}), xpaths=sat12ready_xpaths): pass
+class Greatschools_ACT(WebText.update(parsers={'data':percent_parser}), xpaths=actready_xpaths): pass
+class Greatschools_LowIncome(WebText.update(parsers={'data':graphpercent_parser}), xpaths=lowincome_xpaths): pass
+class Greatschools_NoEnglish(WebText.update(parsers={'data':graphpercent_parser}), xpaths=noenglish_xpaths): pass
+class Greatschools_Experience(WebText.update(parsers={'data':percent_parser}), xpaths=experience_xpaths): pass
+class Greatschools_StudentTeachers(WebText.update(parsers={'data':ratio_parser}), xpaths=studentteachers_xpaths): pass
+class Greatschools_Crawler(WebLinkDict.update(parsers={'key':crawler_keyparser, 'link':crawler_linkparser}), xpaths=crawler_xpaths): pass
 
 class Greatschools_Schools_WebDelayer(WebDelayer): pass 
 class Greatschools_Schools_WebReader(WebReader, retrys=Retrys(retries=3, backoff=0.3, httpcodes=(500, 502, 504)), headers=Headers(UserAgents.load(USERAGENTS_FILE, limit=100)), authenticate=None): pass
