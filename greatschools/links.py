@@ -15,13 +15,14 @@ import regex as re
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 MOD_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
 ROOT_DIR = os.path.abspath(os.path.join(MOD_DIR, os.pardir))
-RES_DIR = os.path.join(ROOT_DIR, 'resources')
-SAVE_DIR = os.path.join(ROOT_DIR, 'save')
-REPO_DIR = os.path.join(SAVE_DIR, 'greatschools')
-DRIVER_FILE = os.path.join(RES_DIR, 'chromedriver.exe')
-QUEUE_FILE = os.path.join(RES_DIR, 'zipcodes.zip.csv')
-REPORT_FILE = os.path.join(SAVE_DIR, 'greatschools', 'links.csv')
-if not ROOT_DIR in sys.path: sys.path.append(ROOT_DIR)
+RES_DIR = os.path.join(ROOT_DIR, "resources")
+SAVE_DIR = os.path.join(ROOT_DIR, "save")
+REPO_DIR = os.path.join(SAVE_DIR, "greatschools")
+DRIVER_FILE = os.path.join(RES_DIR, "chromedriver.exe")
+QUEUE_FILE = os.path.join(RES_DIR, "zipcodes.zip.csv")
+REPORT_FILE = os.path.join(SAVE_DIR, "greatschools", "links.csv")
+if ROOT_DIR not in sys.path: 
+    sys.path.append(ROOT_DIR)
 
 from utilities.input import InputParser
 from utilities.dataframes import dataframe_parser
@@ -35,7 +36,7 @@ from webscraping.webvariables import Address
 
 __version__ = "1.0.0"
 __author__ = "Jack Kirby Cook"
-__all__ = ['Greatschools_Links_WebDelayer', 'Greatschools_Links_WebDownloader', 'Greatschools_Links_WebQueue']
+__all__ = ["Greatschools_Links_WebDelayer", "Greatschools_Links_WebDownloader", "Greatschools_Links_WebQueue"]
 __copyright__ = "Copyright 2021, Jack Kirby Cook"
 __license__ = ""
 
@@ -59,7 +60,8 @@ current_xpath = r"//div[@class='pagination-container']//a[contains(@class, 'acti
 pagination_xpath = r"//div[@class='pagination-container']//a[not(.//span)]"
 
 
-def GID_parser(string): return string.replace("https://www.greatschools.org", "")
+def gid_parser(string): return string.replace("https://www.greatschools.org", "")
+
 
 zipcode_parser = lambda x: str(re.findall(r"\d{5}$", x)[0])
 results_parser = lambda x: str(re.findall(r"(?<=of )[\d\,]+(?= schools)", x)[0])
@@ -71,39 +73,49 @@ pagination_parser = lambda x: str(int(str(x).strip()))
 
 class Greatschools_Captcha(WebCaptcha, xpath=captcha_xpath, timeout=2): pass
 class Greatschools_BadRequest(WebBadRequest, xpath=badrequest_xpath, timeout=2): pass
-class Greatschools_Zipcode(WebText.update(parsers={'data':zipcode_parser}), xpath=zipcode_xpath): pass
-class Greatschools_Results(WebText.update(parsers={'data':results_parser}), xpath=results_xpath): pass
+class Greatschools_Zipcode(WebText.update(parsers={"data": zipcode_parser}), xpath=zipcode_xpath): pass
+class Greatschools_Results(WebText.update(parsers={"data": results_parser}), xpath=results_xpath): pass
 class Greatschools_Contents(WebClickableList, xpath=contents_xpath): pass
-class Greatschools_ContentsLink(WebLink.update(parsers={'data':GID_parser}), xpath=link_contents_xpath, parent=Greatschools_Contents, key='link'): pass
-class Greatschools_ContentsAddress(WebText.update(parsers={'data':address_parser}, optional=True), xpath=address_contents_xpath, parent=Greatschools_Contents, key='address'): pass
-class Greatschools_ContentsName(WebText.update(parsers={'data':name_parser}, optional=True), xpath=name_contents_xpath, parent=Greatschools_Contents, key='name'): pass
-class Greatschools_ContentsType(WebText.update(parsers={'data':type_parser}, optional=True), xpath=type_contents_xpath, parent=Greatschools_Contents, key='type'): pass
-class Greatschools_Current(WebText.update(parsers={'data':pagination_parser}), xpath=current_xpath): pass
+class Greatschools_ContentsLink(WebLink.update(parsers={"data": gid_parser}), xpath=link_contents_xpath, parent=Greatschools_Contents, key="link"): pass
+class Greatschools_ContentsAddress(WebText.update(parsers={"data": address_parser}, optional=True), xpath=address_contents_xpath, parent=Greatschools_Contents, key="address"): pass
+class Greatschools_ContentsName(WebText.update(parsers={"data": name_parser}, optional=True), xpath=name_contents_xpath, parent=Greatschools_Contents, key="name"): pass
+class Greatschools_ContentsType(WebText.update(parsers={"data": type_parser}, optional=True), xpath=type_contents_xpath, parent=Greatschools_Contents, key="type"): pass
+class Greatschools_Current(WebText.update(parsers={"data": pagination_parser}), xpath=current_xpath): pass
 class Greatschools_Previous(WebClickable, xpath=previous_xpath): pass
 class Greatschools_Next(WebClickable, xpath=nextpage_xpath): pass
-class Greatschools_Pagination(WebClickableDict.update(parsers={'key':pagination_parser}), xpath=pagination_xpath): pass
+class Greatschools_Pagination(WebClickableDict.update(parsers={"key": pagination_parser}), xpath=pagination_xpath): pass
+
 
 class Greatschools_Previous_MoveToClick(WebMoveToClick, on=Greatschools_Previous): pass
 class Greatschools_Next_MoveToClick(WebMoveToClick, on=Greatschools_Next): pass
 class Greatschools_Pagination_MoveToClick(WebMoveToClick, on=Greatschools_Pagination): pass
 
+
 class Greatschools_Links_WebDelayer(WebDelayer): pass 
-class Greatschools_Links_WebDriver(WebDriver, options={'headless':False, 'images':True, 'incognito':False}): pass
-class Greatschools_Links_WebURL(WebURL, protocol='https', domain='www.greatschools.org', datasets={}, separator='%20', spaceproxy='-'):
+class Greatschools_Links_WebDriver(WebDriver, options={"headless": False, "images": True, "incognito": False}): pass
+
+
+class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschools.org", datasets={}, separator="%20", spaceproxy="-"):
     def path(self, *args, **kwargs): 
-        if 'zipcode' in kwargs.keys(): return ['search', 'search.zipcode']
-        elif 'city' in kwargs.keys() and 'state' in kwargs.keys(): ['search', 'search.page']
-        else: raise ValueError(list(kwargs.keys()))
+        if "zipcode" in kwargs.keys():
+            return ["search", "search.zipcode"]
+        elif "city" in kwargs.keys() and "state" in kwargs.keys():
+            return ["search", "search.page"]
+        else:
+            raise ValueError(list(kwargs.keys()))
         
-    def parms(self, *args, **kwargs):
-        if 'zipcode' in kwargs.keys(): return {'zip':'{:05.0f}'.format(int(kwargs['zipcode']))}
-        else: return {'q':self.separator.join([item.replace(" ", self.spaceproxy).lower() for item in (kwargs['city'], kwargs['state'])])}
+    def parm(self, *args, **kwargs):
+        if "zipcode" in kwargs.keys():
+            return {"zip": "{:05.0f}".format(int(kwargs["zipcode"]))}
+        else:
+            return {"q": self.separator.join([item.replace(" ", self.spaceproxy).lower() for item in (kwargs["city"], kwargs["state"])])}
 
 
 class Greatschools_Links_WebContents(WebContents):
     ZIPCODE = Greatschools_Zipcode
     RESULTS = Greatschools_Results
-     
+
+
 Greatschools_Links_WebContents.ITERATOR += Greatschools_Contents
 Greatschools_Links_WebContents.PREVIOUS += Greatschools_Previous_MoveToClick
 Greatschools_Links_WebContents.NEXT += Greatschools_Next_MoveToClick
@@ -117,79 +129,91 @@ Greatschools_Links_WebContents.RESULTS += Greatschools_Results
 
 class Greatschools_Links_WebPage(WebBrowserPage, contents=Greatschools_Links_WebContents): 
     def setup(self, *args, **kwargs):  
-        if self.badrequest: raise BadRequestError(str(self))
+        if self.badrequest:
+            raise BadRequestError(str(self))
         self.load[Greatschools_Links_WebContents.ZIPCODE](*args, **kwargs)
         self.load[Greatschools_Links_WebContents.RESULTS](*args, **kwargs)
-        if not bool(self[Greatschools_Links_WebContents.ZIPCODE]): raise MulliganError(str(self))
+        if not bool(self[Greatschools_Links_WebContents.ZIPCODE]):
+            raise MulliganError(str(self))
 
     def execute(self, *args, **kwargs):
-        query = {'dataset':'school', 'zipcode':str(self[Greatschools_Links_WebContents.ZIPCODE].data())}
+        query = {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebContents.ZIPCODE].data())}
         if not bool(self[Greatschools_Links_WebContents.RESULTS]): return    
         for content in iter(self):
-            data = {'GID':content['link'].data(), 'address':content['address'].data(), 'link':content['link'].url}         
-            yield query, 'links', data 
+            data = {"GID": content["link"].data(), "address": content["address"].data(), "link": content["link"].url}
+            yield query, "links", data 
         nextpage = next(self)
         if nextpage: 
             nextpage.setup(*args, **kwargs)
             yield from nextpage(*args, **kwargs)
-        else: return
+        else:
+            return
  
              
-class Greatschools_Links_WebCache(WebCache, querys=['dataset', 'zipcode'], dataset='links'): pass
-class Greatschools_Links_WebQueue(WebQueue, querys=['dataset', 'zipcode'], dataset=['school']):      
+class Greatschools_Links_WebCache(WebCache, querys=["dataset", "zipcode"], dataset="links"): pass
+class Greatschools_Links_WebQueue(WebQueue, querys=["dataset", "zipcode"], dataset=["school"]):      
     def zipcode(self, *args, state, county=None, countys=[], city=None, citys=[], **kwargs): 
         dataframe = self.load(QUEUE_FILE)
         assert all([isinstance(item, (str, type(None))) for item in (county, city)])
         assert all([isinstance(item, list) for item in (countys, citys)])
         countys = list(set([item for item in [county, *countys] if item]))
         citys = list(set([item for item in [city, *citys] if item]))          
-        dataframe = dataframe_parser(dataframe, parsers={'zipcode':lambda x: '{:05.0f}'.format(int(x))}, defaultparser=str)
-        dataframe = dataframe[['zipcode', 'type' ,'city', 'state', 'county']]
-        dataframe = dataframe[dataframe['type'] == 'standard'][['zipcode', 'city', 'state', 'county']].reset_index(drop=True)
-        if citys or countys: dataframe = dataframe[(dataframe['city'].isin(list(citys)) | dataframe['county'].isin(list(countys)))]
-        if state: dataframe = dataframe[dataframe['state'] == state]             
-        return list(dataframe['zipcode'].to_numpy())          
+        dataframe = dataframe_parser(dataframe, parsers={"zipcode": lambda x: "{:05.0f}".format(int(x))}, defaultparser=str)
+        dataframe = dataframe[["zipcode", "type" ,"city", "state", "county"]]
+        dataframe = dataframe[dataframe["type"] == "standard"][["zipcode", "city", "state", "county"]].reset_index(drop=True)
+        if citys or countys:
+            dataframe = dataframe[(dataframe["city"].isin(list(citys)) | dataframe["county"].isin(list(countys)))]
+        if state:
+            dataframe = dataframe[dataframe["state"] == state]
+        return list(dataframe["zipcode"].to_numpy())          
     
     
-class Greatschools_Links_WebDownloader(WebDownloader, by='GID', delay=30, attempts=3):
+class Greatschools_Links_WebDownloader(WebDownloader, by="gid", delay=30, attempts=3):
     def execute(self, *args, queue, delayer, **kwargs): 
-        with Greatschools_Links_WebDriver(DRIVER_FILE, browser='chrome', loadtime=50) as driver:
-            webpage = Greatschools_Links_WebPage(driver, delayer=delayer)
-            for feedquery in iter(queue):
-                weburl = Greatschools_Links_WebURL(**feedquery)
-                try: webpage.load(weburl, referer=None)
+        with Greatschools_Links_WebDriver(DRIVER_FILE, browser="chrome", loadtime=50) as driver:
+            page = Greatschools_Links_WebPage(driver, delayer=delayer)
+            for feed_query in iter(queue):
+                url = Greatschools_Links_WebURL(**feed_query)
+                try:
+                    page.load(url, referer=None)
                 except CaptchaError as error:
-                    queue += feedquery
+                    queue += feed_query
                     raise error  
-                try: webpage.setup(*args, **kwargs)
+                try:
+                    page.setup(*args, **kwargs)
                 except MulliganError as error:
-                    queue += feedquery
-                    LOGGER.info(webpage.status)
+                    queue += feed_query
+                    LOGGER.info(page.status)
                     raise error
                 except BadRequestError: 
-                    LOGGER.info("WebPage BadRequest: {}".format(str(webpage)))
-                    LOGGER.info(str(weburl))
-                    yield Greatschools_Links_WebCache(feedquery, {})
+                    LOGGER.info("WebPage BadRequest: {}".format(str(page)))
+                    LOGGER.info(str(url))
+                    yield Greatschools_Links_WebCache(feed_query, {})
                     continue                
-                for query, dataset, dataframe in webpage(*args, **kwargs): yield Greatschools_Links_WebCache(query, {dataset:dataframe}) 
-                while webpage.crawl(queue):
-                    webpage.setup(*args, **kwargs)
-                    for query, dataset, dataframe in webpage(*args, **kwargs): yield Greatschools_Links_WebCache(query, {dataset:dataframe})        
+                for query, dataset, dataframe in page(*args, **kwargs):
+                    yield Greatschools_Links_WebCache(query, {dataset: dataframe})
+                while page.crawl(queue):
+                    page.setup(*args, **kwargs)
+                    for query, dataset, dataframe in page(*args, **kwargs):
+                        yield Greatschools_Links_WebCache(query, {dataset: dataframe})
 
     
 def main(*args, **kwargs): 
-    webdelayer = Greatschools_Links_WebDelayer('random', wait=(30, 60))
-    webqueue = Greatschools_Links_WebQueue(REPORT_FILE, *args, days=30, **kwargs)
-    webdownloader = Greatschools_Links_WebDownloader(REPO_DIR, REPORT_FILE, *args, delayer=webdelayer, queue=webqueue, attempts=1, **kwargs) 
-    webdownloader(*args, **kwargs)
-    LOGGER.info(str(webdownloader))
-    for results in webdownloader.results: LOGGER.info(str(results))
-    if not bool(webdownloader): raise webdownloader.error
+    delayer = Greatschools_Links_WebDelayer("random", wait=(30, 60))
+    queue = Greatschools_Links_WebQueue(REPORT_FILE, *args, days=30, **kwargs)
+    downloader = Greatschools_Links_WebDownloader(REPO_DIR, REPORT_FILE, *args, delayer=delayer, queue=queue, attempts=1, **kwargs)
+    downloader(*args, **kwargs)
+    LOGGER.info(str(downloader))
+    for results in downloader.results:
+        LOGGER.info(str(results))
+    if not bool(downloader):
+        raise downloader.error
     
 
-if __name__ == '__main__': 
-    logging.basicConfig(level='INFO', format="[%(levelname)s, %(threadName)s]:  %(message)s")
-    inputparser = InputParser(proxys={'assign':'=', 'space':'_'}, parsers={}, default=str)  
+if __name__ == "__main__":
+    sys.argv += ["state=CA", "city=Bakersfield"]
+    logging.basicConfig(level="INFO", format="[%(levelname)s, %(threadName)s]:  %(message)s")
+    inputparser = InputParser(proxys={"assign": "=", "space": "_"}, parsers={}, default=str)
     inputparser(*sys.argv[1:])
     main(*inputparser.inputArgs, **inputparser.inputParms)    
     
