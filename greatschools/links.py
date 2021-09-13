@@ -26,7 +26,7 @@ if ROOT_DIR not in sys.path:
 
 from utilities.input import InputParser
 from utilities.dataframes import dataframe_parser
-from webscraping.webapi import WebURL, WebCache, WebQueue, WebDownloader
+from webscraping.webdownloaders import WebURL, WebCache, WebQueue, WebDownloader
 from webscraping.webdrivers import WebDriver
 from webscraping.webtimers import WebDelayer
 from webscraping.webpages import WebBrowserPage, CaptchaError, BadRequestError, MulliganError, WebContents
