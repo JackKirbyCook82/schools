@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sun May 2 2021
-@name:   Greatschools Download Pages Application
+@name:   Greatschools Pages Download Application
 @author: Jack Kirby Cook
 
 """
@@ -15,28 +15,33 @@ import regex as re
 from fractions import Fraction
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
-MOD_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
-ROOT_DIR = os.path.abspath(os.path.join(MOD_DIR, os.pardir))
-RES_DIR = os.path.join(ROOT_DIR, "resources")
+MODULE_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
+ROOT_DIR = os.path.abspath(os.path.join(MODULE_DIR, os.pardir))
+RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
 SAVE_DIR = os.path.join(ROOT_DIR, "save")
-USERAGENTS_FILE = os.path.join(RES_DIR, "useragents.zip.jl")
-REPO_DIR = os.path.join(SAVE_DIR, "greatschools")
+USERAGENTS_FILE = os.path.join(RESOURCE_DIR, "useragents.zip.jl")
+REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
 QUEUE_FILE = os.path.join(SAVE_DIR, "greatschools", "links.zip.csv")
 REPORT_FILE = os.path.join(SAVE_DIR, "greatschools", "schools.csv")
 if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 from utilities.input import InputParser
 from utilities.dataframes import dataframe_parser
-from webscraping.webdownloaders import WebURL, WebCache, WebQueue, WebDownloader
-from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.webtimers import WebDelayer
+from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
+from webscraping.weburl import WebURL
 from webscraping.webpages import WebRequestPage, MissingRequestError, WebContents
-from webscraping.webdata import WebText, WebTextList, WebLinkDict
+from webscraping.webloaders import WebLoader
+from webscraping.webquerys import WebCache
+from webscraping.webqueues import WebScheduler
+from webscraping.webdownloaders import WebDownloader
+from webscraping.webnodes import WebText, WebLink
+from webscraping.webdata import WebObject, WebList
 from webscraping.webvariables import Address, Price
 
 __version__ = "1.0.0"
 __author__ = "Jack Kirby Cook"
-__all__ = ["Greatschools_Schools_WebDelayer", "Greatschools_Schools_WebDownloader", "Greatschools_Schools_WebQueue"]
+__all__ = ["Greatschools_Schools_WebDelayer", "Greatschools_Schools_WebDownloader", "Greatschools_Schools_WebScheduler"]
 __copyright__ = "Copyright 2021, Jack Kirby Cook"
 __license__ = ""
 
@@ -70,9 +75,32 @@ student_teachers_xpaths = []
 crawler_xpaths = []
 
 
-def gid_parser(string): return string.replace("https://www.greatschools.org/", "")
+address_webloader = WebLoader(xpaths=address_xpaths)
+district_webloader = WebLoader(xpaths=district_xpaths)
+school_name_webloader = WebLoader(xpaths=school_name_xpaths)
+school_type_webloader = WebLoader(xpaths=school_type_xpaths)
+grades_webloader = WebLoader(xpaths=grades_xpaths)
+overall_score_webloader = WebLoader(xpaths=overall_score_xpaths)
+academic_score_webloader = WebLoader(xpaths=academic_score_xpaths)
+test_score_webloader = WebLoader(xpaths=test_score_xpaths)
+subject_keys_webloader = WebLoader(xpaths=subject_keys_xpaths)
+subject_values_webloader = WebLoader(xpaths=subject_values_xpaths)
+race_keys_webloader = WebLoader(xpaths=race_keys_xpaths)
+race_values_webloader = WebLoader(xpaths=race_values_xpaths)
+graduation_webloader = WebLoader(xpaths=graduation_xpaths)
+sat11_ready_webloader = WebLoader(xpaths=sat11_ready_xpaths)
+sat12_ready_webloader = WebLoader(xpaths=sat12_ready_xpaths)
+act_ready_webloader = WebLoader(xpaths=act_ready_xpaths)
+low_income_webloader = WebLoader(xpaths=low_income_xpaths)
+no_english_webloader = WebLoader(xpaths=no_english_xpaths)
+experience_webloader = WebLoader(xpaths=experience_xpaths)
+certification_webloader = WebLoader(xpaths=certification_xpaths)
+salary_webloader = WebLoader(xpaths=salary_xpaths)
+student_teachers_webloader = WebLoader(xpaths=student_teachers_xpaths)
+crawler_webloader = WebLoader(xpaths=crawler_xpaths)
 
 
+gid_parser = lambda x: x.replace("https://www.greatschools.org/", "")
 address_parser = lambda x: str(Address.fromsearch(x))
 price_parser = lambda x: str(Price.fromsearch(x))
 link_parser = lambda x: "".join(["https", "://", "www.greatschools.org", x]) if not str(x).startswith("".join(["https", "://", "www.greatschools.org"])) else x   
@@ -85,55 +113,99 @@ crawler_keyparser = lambda x: hash(frozenset({"gid": gid_parser(x)}))
 crawler_linkparser = lambda x: "".join(["https", "://", "www.greatschools.org", x]) if not str(x).startswith("".join(["https", "://", "www.greatschools.org"])) else x     
 
 
-class Greatschools_Address(WebText.update(parsers={"data": address_parser}), xpaths=address_xpaths): pass
-class Greatschools_District(WebText.update(parsers={"link": link_parser}), xpaths=district_xpaths): pass
-class Greatschools_SchoolName(WebText, xpaths=school_name_xpaths): pass
-class Greatschools_SchoolType(WebText, xpaths=school_type_xpaths): pass
-class Greatschools_Grades(WebText.update(parsers={"data": grades_parser}), xpaths=grades_xpaths): pass
-class Greatschools_OverallScore(WebText.update(parsers={"data": score_parser}), xpaths=overall_score_xpaths): pass
-class Greatschools_AcademicScore(WebText.update(parsers={"data": score_parser}), xpaths=academic_score_xpaths): pass
-class Greatschools_TestScore(WebText.update(parsers={"data": score_parser}), xpaths=test_score_xpaths): pass
-class Greatschools_SubjectKeys(WebTextList, xpaths=subject_keys_xpaths): pass
-class Greatschools_SubjectValues(WebTextList.update(parsers={"data": percent_parser}), xpaths=subject_values_xpaths): pass
-class Greatschools_RaceKeys(WebTextList, xpaths=race_keys_xpaths): pass
-class Greatschools_RaceValues(WebTextList.update(parsers={"data": percent_parser}), xpaths=race_values_xpaths): pass
-class Greatschools_Graduation(WebText.update(parsesr={"data": percent_parser}), xpaths=graduation_xpaths): pass
-class Greatschools_SAT11(WebText.update(parsers={"data": percent_parser}), xpaths=sat11_ready_xpaths): pass
-class Greatschools_SAT12(WebText.update(parsers={"data": percent_parser}), xpaths=sat12_ready_xpaths): pass
-class Greatschools_ACT(WebText.update(parsers={"data": percent_parser}), xpaths=act_ready_xpaths): pass
-class Greatschools_LowIncome(WebText.update(parsers={"data": graph_percent_parser}), xpaths=low_income_xpaths): pass
-class Greatschools_NoEnglish(WebText.update(parsers={"data": graph_percent_parser}), xpaths=no_english_xpaths): pass
-class Greatschools_Experience(WebText.update(parsers={"data": percent_parser}), xpaths=experience_xpaths): pass
-class Greatschools_StudentTeachers(WebText.update(parsers={"data": ratio_parser}), xpaths=student_teachers_xpaths): pass
-class Greatschools_Crawler(WebLinkDict.update(parsers={"key": crawler_keyparser, "link": crawler_linkparser}), xpaths=crawler_xpaths): pass
+# NODES
+class Greatschools_Address(WebText, parsers={"data": address_parser}): pass
+class Greatschools_District(WebText, parsers={"link": link_parser}): pass
+class Greatschools_SchoolName(WebText): pass
+class Greatschools_SchoolType(WebText): pass
+class Greatschools_Grades(WebText, parsers={"data": grades_parser}): pass
+class Greatschools_OverallScore(WebText, parsers={"data": score_parser}): pass
+class Greatschools_AcademicScore(WebText, parsers={"data": score_parser}): pass
+class Greatschools_TestScore(WebText, parsers={"data": score_parser}): pass
+class Greatschools_SubjectKeys(WebText): pass
+class Greatschools_SubjectValues(WebText, parsers={"data": percent_parser}): pass
+class Greatschools_RaceKeys(WebText): pass
+class Greatschools_RaceValues(WebText, parsers={"data": percent_parser}): pass
+class Greatschools_Graduation(WebText, parsesr={"data": percent_parser}): pass
+class Greatschools_SAT11(WebText, parsers={"data": percent_parser}): pass
+class Greatschools_SAT12(WebText, parsers={"data": percent_parser}): pass
+class Greatschools_ACT(WebText, parsers={"data": percent_parser}): pass
+class Greatschools_LowIncome(WebText, parsers={"data": graph_percent_parser}): pass
+class Greatschools_NoEnglish(WebText, parsers={"data": graph_percent_parser}): pass
+class Greatschools_Experience(WebText, parsers={"data": percent_parser}): pass
+class Greatschools_StudentTeachers(WebText, parsers={"data": ratio_parser}): pass
+class Greatschools_Crawler(WebLink, parsers={"key": crawler_keyparser, "link": crawler_linkparser}): pass
+
+
+# DATA
+class Greatschools_Address_WebData(WebObject, on=Greatschools_Address): pass
+class Greatschools_District_WebData(WebObject, on=Greatschools_District): pass
+class Greatschools_SchoolName_WebData(WebObject, on=Greatschools_SchoolName): pass
+class Greatschools_SchoolType_WebData(WebObject, on=Greatschools_SchoolType): pass
+class Greatschools_Grades_WebData(WebObject, on=Greatschools_Grades): pass
+class Greatschools_OverallScore_WebData(WebObject, on=Greatschools_OverallScore): pass
+class Greatschools_AcademicScore_WebData(WebObject, on=Greatschools_AcademicScore): pass
+class Greatschools_TestScore_WebData(WebObject, on=Greatschools_TestScore): pass
+class Greatschools_SubjectKeys_WebData(WebList, on=Greatschools_SubjectKeys): pass
+class Greatschools_SubjectValues_WebData(WebList, on=Greatschools_SubjectValues): pass
+class Greatschools_RaceKeys_WebData(WebList, on=Greatschools_RaceKeys): pass
+class Greatschools_RaceValues_WebData(WebList, on=Greatschools_RaceValues): pass
+class Greatschools_Graduation_WebData(WebObject, on=Greatschools_Graduation): pass
+class Greatschools_SAT11_WebData(WebObject, on=Greatschools_SAT11): pass
+class Greatschools_SAT12_WebData(WebObject, on=Greatschools_SAT12): pass
+class Greatschools_ACT_WebData(WebObject, on=Greatschools_ACT): pass
+class Greatschools_LowIncome_WebData(WebObject, on=Greatschools_LowIncome): pass
+class Greatschools_NoEnglish_WebData(WebObject, on=Greatschools_NoEnglish): pass
+class Greatschools_Experience_WebData(WebObject, on=Greatschools_Experience): pass
+class Greatschools_StudentTeachers_WebData(WebObject, on=Greatschools_StudentTeachers): pass
+class Greatschools_Crawler_WebData(WebList, on=Greatschools_Crawler): pass
 
 
 class Greatschools_Schools_WebDelayer(WebDelayer): pass 
 class Greatschools_Schools_WebReader(WebReader, retrys=Retrys(retries=3, backoff=0.3, httpcodes=(500, 502, 504)), headers=Headers(UserAgents.load(USERAGENTS_FILE, limit=100)), authenticate=None): pass
+class Greatschools_Schools_WebCache(WebCache, querys=["gid"], datasets=["location", "schools", "scores", "college", "testing", "teachers", "demographics"]): pass
 class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatschools.org"): pass
-        
+
+
+class Greatschools_Schools_WebScheduler(WebScheduler, querys=["gid"]):
+    def gid(self, *args, state, city=None, citys=[], zipcode=None, zipcodes=[], **kwargs):
+        dataframe = self.load(QUEUE_FILE)
+        assert all([isinstance(item, (str, type(None))) for item in (zipcode, city)])
+        assert all([isinstance(item, list) for item in (zipcodes, citys)])
+        zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
+        citys = list(set([item for item in [city, *citys] if item]))
+        dataframe = dataframe_parser(dataframe, parsers={"address":Address.fromstr}, defaultparser=str)
+        dataframe["city"] = dataframe["address"].apply(lambda x: x.city if x else None)
+        dataframe["state"] = dataframe["address"].apply(lambda x: x.state if x else None)
+        dataframe["zipcode"] = dataframe["address"].apply(lambda x: x.zipcode if x else None)
+        if citys or zipcodes:
+            dataframe = dataframe[(dataframe["city"].isin(list(citys)) | dataframe["zipcode"].isin(list(zipcodes)))]
+        if state:
+            dataframe = dataframe[dataframe["state"] == state]
+        return list(dataframe["GID"].to_numpy())
+
        
 class Greatschools_Schools_WebContents(WebContents): 
-    ADDRESS = Greatschools_Address
-    DISTRICT = Greatschools_District
-    SCHOOLNAME = Greatschools_SchoolName
-    SCHOOLTYPE = Greatschools_SchoolType
-    GRADES = Greatschools_Grades
-    OVERALLSCORE = Greatschools_OverallScore 
-    ACADEMICSCORE = Greatschools_AcademicScore
-    TESTSCORE = Greatschools_TestScore
-    SUBJECTKEYS = Greatschools_SubjectKeys
-    SUBJECTVALUES = Greatschools_SubjectValues
-    RACEKEYS = Greatschools_RaceKeys
-    RACEVALUES = Greatschools_RaceValues
-    LOWINCOME = Greatschools_LowIncome
-    NOENGLISH = Greatschools_NoEnglish
-    GRADUATION = Greatschools_Graduation
-    SAT11 = Greatschools_SAT11
-    SAT12 = Greatschools_SAT12
-    ACT = Greatschools_ACT
-    EXPERIENCE = Greatschools_Experience 
-    STUDENTTEACHERS = Greatschools_StudentTeachers
+    ADDRESS = Greatschools_Address_WebData
+    DISTRICT = Greatschools_District_WebData
+    SCHOOLNAME = Greatschools_SchoolName_WebData
+    SCHOOLTYPE = Greatschools_SchoolType_WebData
+    GRADES = Greatschools_Grades_WebData
+    OVERALLSCORE = Greatschools_OverallScore_WebData
+    ACADEMICSCORE = Greatschools_AcademicScore_WebData
+    TESTSCORE = Greatschools_TestScore_WebData
+    SUBJECTKEYS = Greatschools_SubjectKeys_WebData
+    SUBJECTVALUES = Greatschools_SubjectValues_WebData
+    RACEKEYS = Greatschools_RaceKeys_WebData
+    RACEVALUES = Greatschools_RaceValues_WebData
+    LOWINCOME = Greatschools_LowIncome_WebData
+    NOENGLISH = Greatschools_NoEnglish_WebData
+    GRADUATION = Greatschools_Graduation_WebData
+    SAT11 = Greatschools_SAT11_WebData
+    SAT12 = Greatschools_SAT12_WebData
+    ACT = Greatschools_ACT_WebData
+    EXPERIENCE = Greatschools_Experience_WebData
+    STUDENTTEACHERS = Greatschools_StudentTeachers_WebData
 
 
 Greatschools_Schools_WebContents.CRAWLER += Greatschools_Crawler
@@ -239,26 +311,7 @@ class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools
         data["Other"] = max(100 - sum(list(data.values())), 0)
         data = {key: str(value) for key, value in data.items()}
         data.update({"gid": gid})
-        yield data 
-        
-
-class Greatschools_Schools_WebCache(WebCache, query="gid", datasets=["location", "schools", "scores", "college", "testing", "teachers", "demographics"]): pass
-class Greatschools_Schools_WebQueue(WebQueue, query="gid"):
-    def gid(self, *args, state, city=None, citys=[], zipcode=None, zipcodes=[], **kwargs):
-        dataframe = self.load(QUEUE_FILE)
-        assert all([isinstance(item, (str, type(None))) for item in (zipcode, city)])
-        assert all([isinstance(item, list) for item in (zipcodes, citys)])
-        zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
-        citys = list(set([item for item in [city, *citys] if item]))                 
-        dataframe = dataframe_parser(dataframe, parsers={"address":Address.fromstr}, defaultparser=str)
-        dataframe["city"] = dataframe["address"].apply(lambda x: x.city if x else None)
-        dataframe["state"] = dataframe["address"].apply(lambda x: x.state if x else None)
-        dataframe["zipcode"] = dataframe["address"].apply(lambda x: x.zipcode if x else None)         
-        if citys or zipcodes:
-            dataframe = dataframe[(dataframe["city"].isin(list(citys)) | dataframe["zipcode"].isin(list(zipcodes)))]
-        if state:
-            dataframe = dataframe[dataframe["state"] == state]
-        return list(dataframe["GID"].to_numpy())      
+        yield data
 
 
 class Greatschools_Schools_WebDownloader(WebDownloader, delay=30, attempts=10):
@@ -292,8 +345,9 @@ class Greatschools_Schools_WebDownloader(WebDownloader, delay=30, attempts=10):
 
 def main(*args, **kwargs): 
     delayer = Greatschools_Schools_WebDelayer("random", wait=(60, 120))
-    queue = Greatschools_Schools_WebQueue(REPORT_FILE, *args, days=30, **kwargs)
-    downloader = Greatschools_Schools_WebDownloader(REPO_DIR, REPORT_FILE, *args, delayer=delayer, queue=queue, **kwargs)
+    scheduler = Greatschools_Schools_WebScheduler(REPORT_FILE, *args, days=30, **kwargs)
+    queue = scheduler(*args, **kwargs)
+    downloader = Greatschools_Schools_WebDownloader(REPOSITORY_DIR, REPORT_FILE, *args, delayer=delayer, queue=queue, attempts=3, **kwargs)
     downloader(*args, **kwargs)
     while True: 
         if downloader.off:
