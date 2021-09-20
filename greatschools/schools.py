@@ -208,7 +208,7 @@ class Greatschools_Schools_WebContents(WebContents):
     STUDENTTEACHERS = Greatschools_StudentTeachers_WebData
 
 
-Greatschools_Schools_WebContents.CRAWLER += Greatschools_Crawler
+# Greatschools_Schools_WebContents.CRAWLER +=
 
 
 class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools_WebContents):    
@@ -364,10 +364,10 @@ def main(*args, **kwargs):
 
 if __name__ == "__main__": 
     sys.argv += ["state=CA", "city=Bakersfield"]
-    logging.basicConfig(level="INFO", format="[%(levelname)s, %(threadName)s]:  %(message)s")
+    logging.basicConfig(level="INFO", format="[%(levelname)s, %(threadName)s]:  %(message)s", handlers=[logging.StreamHandler(sys.stdout)])
     inputparser = InputParser(proxys={"assign": "=", "space": "_"}, parsers={}, default=str)
     inputparser(*sys.argv[1:])
-    main(*inputparser.inputArgs, **inputparser.inputParms)    
+    main(*inputparser.arguments, **inputparser.parameters)
     
 
 

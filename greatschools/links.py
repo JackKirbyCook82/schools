@@ -165,25 +165,21 @@ class Greatschools_Links_WebScheduler(WebScheduler, querys=["dataset", "zipcode"
 
 
 class Greatschools_Links_WebContents(WebContents):
-    ZIPCODE = Greatschools_Zipcode
-    RESULTS = Greatschools_Results
+    ZIPCODE = Greatschools_Zipcode_WebData
+    RESULTS = Greatschools_Results_WebData
 
 
+Greatschools_Links_WebContents.CAPTCHA += Greatschools_Captcha_ClearCaptcha_WebAction
+Greatschools_Links_WebContents.BADREQUEST += Greatschools_BadRequest_WebData
 Greatschools_Links_WebContents.ITERATOR += Greatschools_Contents_WebData
 Greatschools_Links_WebContents.PREVIOUS += Greatschools_Previous_MoveToClick_WebAction
 Greatschools_Links_WebContents.NEXT += Greatschools_NextPage_MoveToClick_WebAction
 Greatschools_Links_WebContents.CURRENT += Greatschools_Current_WebData
 Greatschools_Links_WebContents.PAGINATION += Greatschools_Pagination_MoveToClick_WebAction
-Greatschools_Links_WebContents.CAPTCHA += Greatschools_Captcha_ClearCaptcha_WebAction
-Greatschools_Links_WebContents.BADREQUEST += Greatschools_BadRequest_WebData
-Greatschools_Links_WebContents.ZIPCODE += Greatschools_Zipcode_WebData
-Greatschools_Links_WebContents.RESULTS += Greatschools_Results_WebData
 
 
 class Greatschools_Links_WebPage(WebBrowserPage, contents=Greatschools_Links_WebContents): 
-    def setup(self, *args, **kwargs):  
-        if bool(self[Greatschools_Links_WebContents.BADREQUEST]):
-            raise BadRequestError(str(self))
+    def setup(self, *args, **kwargs):
         self.load[Greatschools_Links_WebContents.ZIPCODE](*args, **kwargs)
         self.load[Greatschools_Links_WebContents.RESULTS](*args, **kwargs)
         if not bool(self[Greatschools_Links_WebContents.ZIPCODE]):
@@ -249,10 +245,10 @@ def main(*args, **kwargs):
 
 if __name__ == "__main__":
     sys.argv += ["state=CA", "city=Bakersfield"]
-    logging.basicConfig(level="INFO", format="[%(levelname)s, %(threadName)s]:  %(message)s")
+    logging.basicConfig(level="INFO", format="[%(levelname)s, %(threadName)s]:  %(message)s", handlers=[logging.StreamHandler(sys.stdout)])
     inputparser = InputParser(proxys={"assign": "=", "space": "_"}, parsers={}, default=str)
     inputparser(*sys.argv[1:])
-    main(*inputparser.inputArgs, **inputparser.inputParms)
+    main(*inputparser.arguments, **inputparser.parameters)
 
 
 
