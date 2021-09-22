@@ -36,7 +36,7 @@ from webscraping.webquerys import WebCache
 from webscraping.webqueues import WebScheduler
 from webscraping.webdownloaders import WebDownloader
 from webscraping.webnodes import WebText, WebLink
-from webscraping.webdata import WebObject, WebList
+from webscraping.webdata import WebObject, WebList, WebDict
 from webscraping.webvariables import Address, Price
 
 __version__ = "1.0.0"
@@ -114,27 +114,27 @@ crawler_linkparser = lambda x: "".join(["https", "://", "www.greatschools.org", 
 
 
 # NODES
-class Greatschools_Address(WebText, parsers={"data": address_parser}): pass
-class Greatschools_District(WebText, parsers={"link": link_parser}): pass
-class Greatschools_SchoolName(WebText): pass
-class Greatschools_SchoolType(WebText): pass
-class Greatschools_Grades(WebText, parsers={"data": grades_parser}): pass
-class Greatschools_OverallScore(WebText, parsers={"data": score_parser}): pass
-class Greatschools_AcademicScore(WebText, parsers={"data": score_parser}): pass
-class Greatschools_TestScore(WebText, parsers={"data": score_parser}): pass
-class Greatschools_SubjectKeys(WebText): pass
-class Greatschools_SubjectValues(WebText, parsers={"data": percent_parser}): pass
-class Greatschools_RaceKeys(WebText): pass
-class Greatschools_RaceValues(WebText, parsers={"data": percent_parser}): pass
-class Greatschools_Graduation(WebText, parsesr={"data": percent_parser}): pass
-class Greatschools_SAT11(WebText, parsers={"data": percent_parser}): pass
-class Greatschools_SAT12(WebText, parsers={"data": percent_parser}): pass
-class Greatschools_ACT(WebText, parsers={"data": percent_parser}): pass
-class Greatschools_LowIncome(WebText, parsers={"data": graph_percent_parser}): pass
-class Greatschools_NoEnglish(WebText, parsers={"data": graph_percent_parser}): pass
-class Greatschools_Experience(WebText, parsers={"data": percent_parser}): pass
-class Greatschools_StudentTeachers(WebText, parsers={"data": ratio_parser}): pass
-class Greatschools_Crawler(WebLink, parsers={"key": crawler_keyparser, "link": crawler_linkparser}): pass
+class Greatschools_Address(WebText, loader=address_webloader, parsers={"data": address_parser}): pass
+class Greatschools_District(WebText, loader=district_webloader, parsers={"link": link_parser}): pass
+class Greatschools_SchoolName(WebText, loader=school_name_webloader): pass
+class Greatschools_SchoolType(WebText, loader=school_type_webloader): pass
+class Greatschools_Grades(WebText, loader=grades_webloader, parsers={"data": grades_parser}): pass
+class Greatschools_OverallScore(WebText, loader=overall_score_webloader, parsers={"data": score_parser}): pass
+class Greatschools_AcademicScore(WebText, loader=academic_score_webloader, parsers={"data": score_parser}): pass
+class Greatschools_TestScore(WebText, loader=test_score_webloader, parsers={"data": score_parser}): pass
+class Greatschools_SubjectKeys(WebText, loader=subject_keys_webloader): pass
+class Greatschools_SubjectValues(WebText, loader=subject_values_webloader, parsers={"data": percent_parser}): pass
+class Greatschools_RaceKeys(WebText, loader=race_keys_webloader): pass
+class Greatschools_RaceValues(WebText, loader=race_values_webloader, parsers={"data": percent_parser}): pass
+class Greatschools_Graduation(WebText, loader=graduation_webloader, parsesr={"data": percent_parser}): pass
+class Greatschools_SAT11(WebText, loader=sat11_ready_webloader, parsers={"data": percent_parser}): pass
+class Greatschools_SAT12(WebText, loader=sat12_ready_webloader, parsers={"data": percent_parser}): pass
+class Greatschools_ACT(WebText, loader=act_ready_webloader, parsers={"data": percent_parser}): pass
+class Greatschools_LowIncome(WebText, loader=low_income_webloader, parsers={"data": graph_percent_parser}): pass
+class Greatschools_NoEnglish(WebText, loader=no_english_webloader, parsers={"data": graph_percent_parser}): pass
+class Greatschools_Experience(WebText, loader=experience_webloader, parsers={"data": percent_parser}): pass
+class Greatschools_StudentTeachers(WebText, loader=student_teachers_webloader, parsers={"data": ratio_parser}): pass
+class Greatschools_Crawler(WebLink, loader=crawler_webloader, parsers={"key": crawler_keyparser, "link": crawler_linkparser}): pass
 
 
 # DATA
@@ -158,7 +158,7 @@ class Greatschools_LowIncome_WebData(WebObject, on=Greatschools_LowIncome): pass
 class Greatschools_NoEnglish_WebData(WebObject, on=Greatschools_NoEnglish): pass
 class Greatschools_Experience_WebData(WebObject, on=Greatschools_Experience): pass
 class Greatschools_StudentTeachers_WebData(WebObject, on=Greatschools_StudentTeachers): pass
-class Greatschools_Crawler_WebData(WebList, on=Greatschools_Crawler): pass
+class Greatschools_Crawler_WebData(WebDict, on=Greatschools_Crawler): pass
 
 
 class Greatschools_Schools_WebDelayer(WebDelayer): pass 
@@ -208,7 +208,7 @@ class Greatschools_Schools_WebContents(WebContents):
     STUDENTTEACHERS = Greatschools_StudentTeachers_WebData
 
 
-# Greatschools_Schools_WebContents.CRAWLER +=
+Greatschools_Schools_WebContents.CRAWLER += Greatschools_Crawler_WebData
 
 
 class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools_WebContents):    

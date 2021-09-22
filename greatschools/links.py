@@ -93,14 +93,14 @@ pagination_parser = lambda x: str(int(str(x).strip()))
 class Greatschools_Captcha(WebCaptcha, loader=captcha_webloader): pass
 class Greatschools_BadRequest(WebBadRequest, loader=badrequest_webloader): pass
 class Greatschools_Zipcode(WebText, loader=zipcode_webloader, parsers={"data": zipcode_parser}): pass
-class Greatschools_Results(WebText, loader=results_parser, parsers={"data": results_parser}): pass
+class Greatschools_Results(WebText, loader=results_webloader, parsers={"data": results_parser}): pass
 class Greatschools_Contents(WebClickable, loader=contents_webloader): pass
 class Greatschools_ContentsLink(WebLink, loader=link_contents_webloader, parsers={"data": gid_parser}): pass
-class Greatschools_ContentsAddress(WebText, loader=address_contents_webloader, parsers={"data": address_parser}, optional=True): pass
-class Greatschools_ContentsName(WebText, loader=name_contents_webloader, parsers={"data": name_parser}, optional=True): pass
-class Greatschools_ContentsType(WebText, loader=type_contents_webloader, parsers={"data": type_parser}, optional=True): pass
+class Greatschools_ContentsAddress(WebText, loader=address_contents_webloader, parsers={"data": address_parser}): pass
+class Greatschools_ContentsName(WebText, loader=name_contents_webloader, parsers={"data": name_parser}): pass
+class Greatschools_ContentsType(WebText, loader=type_contents_webloader, parsers={"data": type_parser}): pass
 class Greatschools_Current(WebText, loader=current_webloader, parsers={"data": pagination_parser}): pass
-class Greatschools_Previous(WebClickable, loader=previous_webloader): pass
+class Greatschools_Previous(WebClickable, loader=previous_webloader,): pass
 class Greatschools_NextPage(WebClickable, loader=nextpage_webloader): pass
 class Greatschools_Pagination(WebClickable, loader=pagination_webloader, parsers={"key": pagination_parser}): pass
 
@@ -112,18 +112,18 @@ Greatschools_Contents["type"] = Greatschools_ContentsType
 
 
 # DATA
-class Greatschools_BadRequest_WebData(WebObject, on=Greatschools_BadRequest): pass
+class Greatschools_BadRequest_WebData(WebObject, on=Greatschools_BadRequest, optional=True): pass
 class Greatschools_Zipcode_WebData(WebObject, on=Greatschools_Zipcode): pass
-class Greatschools_Results_WebData(WebObject, on=Greatschools_Results): pass
-class Greatschools_Contents_WebData(WebList, on=Greatschools_Contents): pass
-class Greatschools_Current_WebData(WebObject, on=Greatschools_Current): pass
+class Greatschools_Results_WebData(WebObject, on=Greatschools_Results, optional=True): pass
+class Greatschools_Contents_WebData(WebList, on=Greatschools_Contents, optional=True): pass
+class Greatschools_Current_WebData(WebObject, on=Greatschools_Current, optional=True): pass
 
 
 # ACTIONS
-class Greatschools_Captcha_ClearCaptcha_WebAction(WebClearCaptcha, on=Greatschools_Captcha): pass
-class Greatschools_Previous_MoveToClick_WebAction(WebMoveToClick, on=Greatschools_Previous): pass
-class Greatschools_NextPage_MoveToClick_WebAction(WebMoveToClick, on=Greatschools_NextPage): pass
-class Greatschools_Pagination_MoveToClick_WebAction(WebMoveToClick, on=Greatschools_Pagination): pass
+class Greatschools_Captcha_ClearCaptcha_WebAction(WebClearCaptcha, on=Greatschools_Captcha, optional=True): pass
+class Greatschools_Previous_MoveToClick_WebAction(WebMoveToClick, on=Greatschools_Previous, optional=True): pass
+class Greatschools_NextPage_MoveToClick_WebAction(WebMoveToClick, on=Greatschools_NextPage, optional=True): pass
+class Greatschools_Pagination_MoveToClick_WebAction(WebMoveToClick, on=Greatschools_Pagination, optional=True): pass
 
 
 class Greatschools_Links_WebDelayer(WebDelayer): pass
