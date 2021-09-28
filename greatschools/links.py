@@ -34,9 +34,8 @@ from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebCache
 from webscraping.webqueues import WebScheduler
 from webscraping.webdownloaders import WebDownloader
-from webscraping.webnodes import WebClickable, WebText, WebLink, WebBadRequest, WebCaptcha
+from webscraping.webdata import WebClickable, WebText, WebLink, WebBadRequest, WebCaptcha
 from webscraping.webactions import WebMoveToClick, WebClearCaptcha
-from webscraping.webdata import WebObject, WebList
 from webscraping.webvariables import Address
 
 __version__ = "1.0.0"
@@ -89,41 +88,31 @@ type_parser = lambda x: str(re.findall(re.compile(r"Public district|Public chart
 pagination_parser = lambda x: str(int(str(x).strip()))
 
 
-# NODES
-class Greatschools_Captcha(WebCaptcha, loader=captcha_webloader): pass
-class Greatschools_BadRequest(WebBadRequest, loader=badrequest_webloader): pass
+class Greatschools_Captcha(WebCaptcha, loader=captcha_webloader, optional=True): pass
+class Greatschools_BadRequest(WebBadRequest, loader=badrequest_webloader, optional=True): pass
 class Greatschools_Zipcode(WebText, loader=zipcode_webloader, parsers={"data": zipcode_parser}): pass
-class Greatschools_Results(WebText, loader=results_webloader, parsers={"data": results_parser}): pass
-class Greatschools_Contents(WebClickable, loader=contents_webloader): pass
+class Greatschools_Results(WebText, loader=results_webloader, parsers={"data": results_parser}, optional=True): pass
+class Greatschools_Contents(WebClickable, loader=contents_webloader, optional=True): pass
 class Greatschools_ContentsLink(WebLink, loader=link_contents_webloader, parsers={"data": gid_parser}): pass
-class Greatschools_ContentsAddress(WebText, loader=address_contents_webloader, parsers={"data": address_parser}): pass
-class Greatschools_ContentsName(WebText, loader=name_contents_webloader, parsers={"data": name_parser}): pass
-class Greatschools_ContentsType(WebText, loader=type_contents_webloader, parsers={"data": type_parser}): pass
-class Greatschools_Current(WebText, loader=current_webloader, parsers={"data": pagination_parser}): pass
-class Greatschools_Previous(WebClickable, loader=previous_webloader,): pass
-class Greatschools_NextPage(WebClickable, loader=nextpage_webloader): pass
-class Greatschools_Pagination(WebClickable, loader=pagination_webloader, parsers={"key": pagination_parser}): pass
+class Greatschools_ContentsAddress(WebText, loader=address_contents_webloader, parsers={"data": address_parser}, optional=True): pass
+class Greatschools_ContentsName(WebText, loader=name_contents_webloader, parsers={"data": name_parser}, optional=True): pass
+class Greatschools_ContentsType(WebText, loader=type_contents_webloader, parsers={"data": type_parser}, optional=True): pass
+class Greatschools_Current(WebText, loader=current_webloader, parsers={"data": pagination_parser}, optional=True): pass
+class Greatschools_Previous(WebClickable, loader=previous_webloader, optional=True): pass
+class Greatschools_NextPage(WebClickable, loader=nextpage_webloader, optional=True): pass
+class Greatschools_Pagination(WebClickable, loader=pagination_webloader, parsers={"key": pagination_parser}, optional=True): pass
 
 
-Greatschools_Contents["link"] = Greatschools_ContentsAddress
+Greatschools_Contents["link"] = Greatschools_ContentsLink
 Greatschools_Contents["address"] = Greatschools_ContentsAddress
 Greatschools_Contents["name"] = Greatschools_ContentsName
 Greatschools_Contents["type"] = Greatschools_ContentsType
 
 
-# DATA
-class Greatschools_BadRequest_WebData(WebObject, on=Greatschools_BadRequest, optional=True): pass
-class Greatschools_Zipcode_WebData(WebObject, on=Greatschools_Zipcode): pass
-class Greatschools_Results_WebData(WebObject, on=Greatschools_Results, optional=True): pass
-class Greatschools_Contents_WebData(WebList, on=Greatschools_Contents, optional=True): pass
-class Greatschools_Current_WebData(WebObject, on=Greatschools_Current, optional=True): pass
-
-
-# ACTIONS
-class Greatschools_Captcha_ClearCaptcha_WebAction(WebClearCaptcha, on=Greatschools_Captcha, optional=True): pass
-class Greatschools_Previous_MoveToClick_WebAction(WebMoveToClick, on=Greatschools_Previous, optional=True): pass
-class Greatschools_NextPage_MoveToClick_WebAction(WebMoveToClick, on=Greatschools_NextPage, optional=True): pass
-class Greatschools_Pagination_MoveToClick_WebAction(WebMoveToClick, on=Greatschools_Pagination, optional=True): pass
+class Greatschools_Captcha_ClearCaptcha(WebClearCaptcha, on=Greatschools_Captcha, wait=60*5): pass
+class Greatschools_Previous_MoveToClick(WebMoveToClick, on=Greatschools_Previous): pass
+class Greatschools_NextPage_MoveToClick(WebMoveToClick, on=Greatschools_NextPage): pass
+class Greatschools_Pagination_MoveToClick(WebMoveToClick, on=Greatschools_Pagination,): pass
 
 
 class Greatschools_Links_WebDelayer(WebDelayer): pass
@@ -154,8 +143,8 @@ class Greatschools_Links_WebScheduler(WebScheduler, querys=["dataset", "zipcode"
         assert all([isinstance(item, list) for item in (countys, citys)])
         countys = list(set([item for item in [county, *countys] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
-        dataframe = dataframe_parser(dataframe, parsers={"zipcode": lambda x: "{:05.0f}".format(int(x))}, defaultparser=str)
-        dataframe = dataframe[["zipcode", "type" ,"city", "state", "county"]]
+        dataframe = dataframe_parser(dataframe, parsers={"zipcode": lambda x: "{:05.0f}".format(int(x))}, default=str)
+        dataframe = dataframe[["zipcode", "type", "city", "state", "county"]]
         dataframe = dataframe[dataframe["type"] == "standard"][["zipcode", "city", "state", "county"]].reset_index(drop=True)
         if citys or countys:
             dataframe = dataframe[(dataframe["city"].isin(list(citys)) | dataframe["county"].isin(list(countys)))]
@@ -165,17 +154,17 @@ class Greatschools_Links_WebScheduler(WebScheduler, querys=["dataset", "zipcode"
 
 
 class Greatschools_Links_WebContents(WebContents):
-    ZIPCODE = Greatschools_Zipcode_WebData
-    RESULTS = Greatschools_Results_WebData
+    ZIPCODE = Greatschools_Zipcode
+    RESULTS = Greatschools_Results
 
 
-Greatschools_Links_WebContents.CAPTCHA += Greatschools_Captcha_ClearCaptcha_WebAction
-Greatschools_Links_WebContents.BADREQUEST += Greatschools_BadRequest_WebData
-Greatschools_Links_WebContents.ITERATOR += Greatschools_Contents_WebData
-Greatschools_Links_WebContents.PREVIOUS += Greatschools_Previous_MoveToClick_WebAction
-Greatschools_Links_WebContents.NEXT += Greatschools_NextPage_MoveToClick_WebAction
-Greatschools_Links_WebContents.CURRENT += Greatschools_Current_WebData
-Greatschools_Links_WebContents.PAGINATION += Greatschools_Pagination_MoveToClick_WebAction
+Greatschools_Links_WebContents.CAPTCHA += Greatschools_Captcha_ClearCaptcha
+Greatschools_Links_WebContents.BADREQUEST += Greatschools_BadRequest
+Greatschools_Links_WebContents.ITERATOR += Greatschools_Contents
+Greatschools_Links_WebContents.PREVIOUS += Greatschools_Previous_MoveToClick
+Greatschools_Links_WebContents.NEXT += Greatschools_NextPage_MoveToClick
+Greatschools_Links_WebContents.CURRENT += Greatschools_Current
+Greatschools_Links_WebContents.PAGINATION += Greatschools_Pagination_MoveToClick
 
 
 class Greatschools_Links_WebPage(WebBrowserPage, contents=Greatschools_Links_WebContents): 
@@ -193,14 +182,14 @@ class Greatschools_Links_WebPage(WebBrowserPage, contents=Greatschools_Links_Web
             data = {"GID": content["link"].data(), "address": content["address"].data(), "link": content["link"].url}
             yield query, "links", data 
         nextpage = next(self)
-        if nextpage: 
+        if bool(nextpage):
             nextpage.setup(*args, **kwargs)
             yield from nextpage(*args, **kwargs)
         else:
             return
  
 
-class Greatschools_Links_WebDownloader(WebDownloader, by=["gid"], delay=30, attempts=3):
+class Greatschools_Links_WebDownloader(WebDownloader, by=["GID"], delay=30, attempts=3):
     def execute(self, *args, queue, delayer, **kwargs): 
         with Greatschools_Links_WebDriver(DRIVER_FILE, browser="chrome", loadtime=50) as driver:
             page = Greatschools_Links_WebPage(driver, delayer=delayer)
@@ -210,18 +199,18 @@ class Greatschools_Links_WebDownloader(WebDownloader, by=["gid"], delay=30, atte
                     page.load(url, referer=None)
                 except CaptchaError as error:
                     queue += feed_query
-                    raise error  
+                    raise error
+                except BadRequestError:
+                    LOGGER.info("WebPage BadRequest: {}".format(str(page)))
+                    LOGGER.info(str(url))
+                    yield Greatschools_Links_WebCache(feed_query, {})
+                    continue
                 try:
                     page.setup(*args, **kwargs)
                 except MulliganError as error:
                     queue += feed_query
                     LOGGER.info(page.status)
                     raise error
-                except BadRequestError: 
-                    LOGGER.info("WebPage BadRequest: {}".format(str(page)))
-                    LOGGER.info(str(url))
-                    yield Greatschools_Links_WebCache(feed_query, {})
-                    continue                
                 for query, dataset, dataframe in page(*args, **kwargs):
                     yield Greatschools_Links_WebCache(query, {dataset: dataframe})
                 while page.crawl(queue):
@@ -231,10 +220,10 @@ class Greatschools_Links_WebDownloader(WebDownloader, by=["gid"], delay=30, atte
 
     
 def main(*args, **kwargs): 
-    delayer = Greatschools_Links_WebDelayer("random", wait=(30, 60))
+    delayer = Greatschools_Links_WebDelayer("random", wait=(15, 30))
     scheduler = Greatschools_Links_WebScheduler(REPORT_FILE, *args, days=30, **kwargs)
     queue = scheduler(*args, **kwargs)
-    downloader = Greatschools_Links_WebDownloader(REPOSITORY_DIR, REPORT_FILE, *args, delayer=delayer, queue=queue, attempts=1, **kwargs)
+    downloader = Greatschools_Links_WebDownloader(REPOSITORY_DIR, REPORT_FILE, *args, delayer=delayer, queue=queue, **kwargs)
     downloader(*args, **kwargs)
     LOGGER.info(str(downloader))
     for results in downloader.results:
