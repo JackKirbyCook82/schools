@@ -13,15 +13,15 @@ import logging
 import regex as re
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
-MODULE_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
-ROOT_DIR = os.path.abspath(os.path.join(MODULE_DIR, os.pardir))
-RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
+MOD_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
+ROOT_DIR = os.path.abspath(os.path.join(MOD_DIR, os.pardir))
 SAVE_DIR = os.path.join(ROOT_DIR, "save")
+RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
 DRIVER_FILE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
 QUEUE_FILE = os.path.join(RESOURCE_DIR, "zipcodes.zip.csv")
-REPORT_FILE = os.path.join(SAVE_DIR, "greatschools", "links.csv")
-if ROOT_DIR not in sys.path: 
+REPORT_FILE = os.path.join(REPOSITORY_DIR, "links.csv")
+if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
 from utilities.input import InputParser
@@ -32,7 +32,7 @@ from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, CaptchaError, BadRequestError, MulliganError, WebContents
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebCache
-from webscraping.webqueues import WebScheduler
+from webscraping.webqueues import WebScheduler, WebQueue
 from webscraping.webdownloaders import WebDownloader
 from webscraping.webdata import WebClickable, WebText, WebLink, WebBadRequest, WebCaptcha
 from webscraping.webactions import WebMoveToClick, WebClearCaptcha
@@ -79,7 +79,7 @@ current_webloader = WebLoader(xpath=current_xpath)
 pagination_webloader = WebLoader(xpath=pagination_xpath)
 
 
-gid_parser = lambda x: x.replace("https://www.greatschools.org", "")
+identity_parser = lambda x: x.replace("https://www.greatschools.org", "")
 zipcode_parser = lambda x: str(re.findall(r"\d{5}$", x)[0])
 results_parser = lambda x: str(re.findall(r"(?<=of )[\d\,]+(?= schools)", x)[0])
 address_parser = lambda x: Address.fromsearch(x)
@@ -93,7 +93,7 @@ class Greatschools_BadRequest(WebBadRequest, loader=badrequest_webloader, option
 class Greatschools_Zipcode(WebText, loader=zipcode_webloader, parsers={"data": zipcode_parser}): pass
 class Greatschools_Results(WebText, loader=results_webloader, parsers={"data": results_parser}, optional=True): pass
 class Greatschools_Contents(WebClickable, loader=contents_webloader, optional=True): pass
-class Greatschools_ContentsLink(WebLink, loader=link_contents_webloader, parsers={"data": gid_parser}): pass
+class Greatschools_ContentsLink(WebLink, loader=link_contents_webloader, parsers={"data": identity_parser}): pass
 class Greatschools_ContentsAddress(WebText, loader=address_contents_webloader, parsers={"data": address_parser}, optional=True): pass
 class Greatschools_ContentsName(WebText, loader=name_contents_webloader, parsers={"data": name_parser}, optional=True): pass
 class Greatschools_ContentsType(WebText, loader=type_contents_webloader, parsers={"data": type_parser}, optional=True): pass
@@ -118,6 +118,7 @@ class Greatschools_Pagination_MoveToClick(WebMoveToClick, on=Greatschools_Pagina
 class Greatschools_Links_WebDelayer(WebDelayer): pass
 class Greatschools_Links_WebDriver(WebDriver, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Links_WebCache(WebCache, querys=["dataset", "zipcode"], datasets=["links"]): pass
+class Greatschools_Links_WebQueue(WebQueue): pass
 
 
 class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschools.org", separator="%20", spaceproxy="-"):
@@ -136,7 +137,7 @@ class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschoo
             return {"q": self.separator.join([item.replace(" ", self.spaceproxy).lower() for item in (kwargs["city"], kwargs["state"])])}
 
 
-class Greatschools_Links_WebScheduler(WebScheduler, querys=["dataset", "zipcode"], dataset=["school"]):
+class Greatschools_Links_WebScheduler(WebScheduler, queue=Greatschools_Links_WebQueue, querys=["dataset", "zipcode"], dataset=["school"]):
     def zipcode(self, *args, state, county=None, countys=[], city=None, citys=[], **kwargs):
         dataframe = self.load(QUEUE_FILE)
         assert all([isinstance(item, (str, type(None))) for item in (county, city)])
