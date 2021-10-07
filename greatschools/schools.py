@@ -31,11 +31,13 @@ from utilities.dataframes import dataframe_parser
 from webscraping.webtimers import WebDelayer
 from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebRequestPage, MissingRequestError, WebContents
+from webscraping.webpages import WebRequestPage
+from webscraping.webpages import MissingRequestError
+from webscraping.webpages import WebContents, WebCrawlingContents
 from webscraping.webloaders import WebLoader
-from webscraping.webquerys import WebCache
-from webscraping.webqueues import WebScheduler, WebQueue
-from webscraping.webdownloaders import WebDownloader
+from webscraping.webquerys import WebQuery, WebDatasets
+from webscraping.webqueues import WebScheduler
+from webscraping.webdownloaders import WebDownloader, CacheMixin, AttemptsMixin
 from webscraping.webdata import WebText, WebLink
 from webscraping.webvariables import Address, Price
 
@@ -139,12 +141,14 @@ class Greatschools_Crawler(WebLink, loader=crawler_webloader, parsers={"key": cr
 
 class Greatschools_Schools_WebDelayer(WebDelayer): pass 
 class Greatschools_Schools_WebReader(WebReader, retrys=Retrys(retries=3, backoff=0.3, httpcodes=(500, 502, 504)), headers=Headers(UserAgents.load(USERAGENTS_FILE, limit=100)), authenticate=None): pass
-class Greatschools_Schools_WebCache(WebCache, querys=["GID"], datasets=["location", "schools", "scores", "college", "testing", "teachers", "demographics"]): pass
-class Greatschools_Schools_WebQueue(WebQueue): pass
 class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatschools.org"): pass
 
 
-class Greatschools_Schools_WebScheduler(WebScheduler, queue=Greatschools_Schools_WebQueue, querys=["GID"]):
+class Greatschools_Schools_WebQuery(WebQuery, fields=["GID"]): pass
+class Greatschools_Schools_WebDatasets(WebDatasets, fields=["location", "schools", "scores", "college", "testing", "teachers", "demographics"]): pass
+
+
+class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
     def GID(self, *args, state, city=None, citys=[], zipcode=None, zipcodes=[], **kwargs):
         dataframe = self.load(QUEUE_FILE)
         assert all([isinstance(item, (str, type(None))) for item in (zipcode, city)])
@@ -161,7 +165,10 @@ class Greatschools_Schools_WebScheduler(WebScheduler, queue=Greatschools_Schools
             dataframe = dataframe[dataframe["state"] == state]
         return list(dataframe["GID"].to_numpy())
 
-       
+    @staticmethod
+    def execute(querys, *args, **kwargs): return [Greatschools_Schools_WebQuery(query) for query in querys]
+
+
 class Greatschools_Schools_WebContents(WebContents): 
     ADDRESS = Greatschools_Address
     DISTRICT = Greatschools_District
@@ -185,38 +192,42 @@ class Greatschools_Schools_WebContents(WebContents):
     STUDENTTEACHERS = Greatschools_StudentTeachers
 
 
+class Greatschools_Schools_WebCrawlingContents(WebCrawlingContents): pass
+
+
 Greatschools_Schools_WebContents.CRAWLER += Greatschools_Crawler
 
 
-class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools_WebContents):
+class Greatschools_Schools_WebPage(WebRequestPage):
     def setup(self, *args, **kwargs): 
         for content in iter(self.load):
             content(*args, **kwargs)
         if self.empty:
             self.show()
-    
-    def execute(self, *args, **kwargs): 
-        identity = str(identity_parser(self.url))
-        query = {"GID": identity}
-        for data in self.location(*args, identity=identity, **kwargs):
-            yield query, "location", data
-        for data in self.schools(*args, identity=identity, **kwargs):
-            yield query, "schools", data
-        for data in self.scores(*args, identity=identity, **kwargs):
-            yield query, "scores", data
-        for data in self.college(*args, identity=identity, **kwargs):
-            yield query, "college", data
-        for data in self.teachers(*args, identity=identity, **kwargs):
-            yield query, "teachers", data
-        for data in self.testing(*args, identity=identity, **kwargs):
-            yield query, "testing", data
-        for data in self.demographics(*args, identity=identity, **kwargs):
-            yield query, "demographics", data
 
-    def location(self, *args, identity, **kwargs):
+    @property
+    def query(self): return {"GID": str(identity_parser(self.url))}
+
+    def execute(self, *args, **kwargs):
+        for data in self.location(*args, **kwargs):
+            yield "location", data
+        for data in self.schools(*args, **kwargs):
+            yield "schools", data
+        for data in self.scores(*args, **kwargs):
+            yield "scores", data
+        for data in self.college(*args, **kwargs):
+            yield "college", data
+        for data in self.teachers(*args, **kwargs):
+            yield "teachers", data
+        for data in self.testing(*args,args):
+            yield "testing", data
+        for data in self.demographics(*args, **kwargs):
+            yield "demographics", data
+
+    def location(self):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.ADDRESS, Greatschools_Schools_WebContents.DISTRICT)]):
             return
-        data = {"GID": identity}
+        data = {"GID": str(identity_parser(self.url))}
         if bool(self[Greatschools_Schools_WebContents.ADDRESS]):
             data["address"] = self[Greatschools_Schools_WebContents.ADDRESS].data()
         if bool(self[Greatschools_Schools_WebContents.DISTRICT]):
@@ -224,10 +235,10 @@ class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools
             data["districtlink"] = self[Greatschools_Schools_WebContents.DISTRICT].link()
         yield data
     
-    def schools(self, *args, identity, **kwargs):
+    def schools(self):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.SCHOOLNAME, Greatschools_Schools_WebContents.SCHOOLTYPE, Greatschools_Schools_WebContents.GRADES)]):
             return
-        data = {"GID": identity}
+        data = {"GID": str(identity_parser(self.url))}
         if bool(self[Greatschools_Schools_WebContents.SCHOOLNAME]):
             data["schoolname"] = self[Greatschools_Schools_WebContents.SCHOOLNAME].data()
         if bool(self[Greatschools_Schools_WebContents.SCHOOLTYPE]):
@@ -236,10 +247,10 @@ class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools
             data["grades"] = self[Greatschools_Schools_WebContents.GRADES].data()
         yield data
 
-    def scores(self, *args, identity, **kwargs):
+    def scores(self):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.OVERALLSCORE, Greatschools_Schools_WebContents.ACADEMICSCORE, Greatschools_Schools_WebContents.TESTSCORE)]):
             return
-        data = {"GID": identity}
+        data = {"GID": str(identity_parser(self.url))}
         if bool(self[Greatschools_Schools_WebContents.OVERALLSCORE]):
             data["overallscore"] = self[Greatschools_Schools_WebContents.OVERALLSCORE].data()
         if bool(self[Greatschools_Schools_WebContents.ACADEMICSCORE]):
@@ -248,10 +259,10 @@ class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools
             data["testscore"] = self[Greatschools_Schools_WebContents.TESTSCORE].data()
         yield data
     
-    def college(self, *args, identity, **kwargs):
+    def college(self):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.GRADUATION, Greatschools_Schools_WebContents.SAT11, Greatschools_Schools_WebContents.SAT12, Greatschools_Schools_WebContents.ACT)]):
             return
-        data = {"GID": identity}
+        data = {"GID": str(identity_parser(self.url))}
         if bool(self[Greatschools_Schools_WebContents.GRADUATION]):
             data["graduation"] = self[Greatschools_Schools_WebContents.GRADUATION].data()
         if bool(self[Greatschools_Schools_WebContents.SAT11]):
@@ -262,57 +273,57 @@ class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools
             data["ACT"] = self[Greatschools_Schools_WebContents.ACT].data()
         yield data        
 
-    def teachers(self, *args, identity, **kwargs):
+    def teachers(self):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.EXPERIENCE, Greatschools_Schools_WebContents.STUDENTTEACHERS)]):
             return
-        data = {"GID": identity}
+        data = {"GID": str(identity_parser(self.url))}
         if bool(self[Greatschools_Schools_WebContents.EXPERIENCE]):
             data["experience"] = self[Greatschools_Schools_WebContents.EXPERIENCE].data()
         if bool(self[Greatschools_Schools_WebContents.STUDENTTEACHERS]):
             data["studentteachers"] = self[Greatschools_Schools_WebContents.STUDENTTEACHERS].data()
         yield data
     
-    def testing(self, *args, identity, **kwargs):
+    def testing(self):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.SUBJECTKEYS, Greatschools_Schools_WebContents.SUBJECTVALUES)]):
             return
-        data = {"GID": identity}
+        data = {"GID": str(identity_parser(self.url))}
         assert len(self[Greatschools_Schools_WebContents.SUBJECTKEYS]) == len(self[Greatschools_Schools_WebContents.SUBJECTVALUES])
         data.update({key: str(value) for key, value in zip(self[Greatschools_Schools_WebContents.SUBJECTKEYS], self[Greatschools_Schools_WebContents.SUBJECTVALUES])})
         yield data
 
-    def demographics(self, *args, identity, **kwargs):
+    def demographics(self):
         if not any([bool(self[content]) for content in (Greatschools_Schools_WebContents.RACEKEYS, Greatschools_Schools_WebContents.RACEVALUES, Greatschools_Schools_WebContents.LOWINCOME, Greatschools_Schools_WebContents.NOENGLISH)]):
             return
         assert len(self[Greatschools_Schools_WebContents.RACEKEYS]) == len(self[Greatschools_Schools_WebContents.RACEVALUES])
         data = {key: value for key, value in zip(self[Greatschools_Schools_WebContents.RACEKEYS], self[Greatschools_Schools_WebContents.RACEVALUES]) if key in ("White", "Hispanic", "Black", "Asian")}
         data["Other"] = max(100 - sum(list(data.values())), 0)
         data = {key: str(value) for key, value in data.items()}
-        data.update({"GID": identity})
+        data.update({"GID": str(identity_parser(self.url))})
         yield data
 
 
-class Greatschools_Schools_WebDownloader(WebDownloader, delay=30, attempts=10):
-    def execute(self, *args, queue, delayer, **kwargs):     
-        links = self.links(*args, **kwargs)
+class Greatschools_Schools_WebDownloader(WebDownloader + CacheMixin + AttemptsMixin, attempts=10, delay=25):
+    def execute(self, *args, queue, delayer, **kwargs):
         with Greatschools_Schools_WebReader() as session:
             page = Greatschools_Schools_WebPage(session, delayer=delayer)
-            for feed_query in iter(queue):
-                url = links[feed_query["GID"]]
-                try:
-                    page.load(url, referer="www.google.com")
-                except MissingRequestError: 
-                    LOGGER.info("WebPage Missing: {}".format(str(page)))
-                    LOGGER.info(str(url))
-                    yield Greatschools_Schools_WebCache(feed_query, {})
-                    continue  
-                page.setup(*args, **kwargs)
-                for query, dataset, dataframe in page(*args, **kwargs):
-                    yield Greatschools_Schools_WebCache(query, {dataset: dataframe})
-                while page.crawl(queue):
+            for query in iter(queue):
+                with query(lambda x: x.todict()) as items:
+                    url = self.links[items["GID"]]
+                    try:
+                        page.load(url, referer=None)
+                    except MissingRequestError:
+                        yield query, Greatschools_Schools_WebDatasets({})
+                        continue
                     page.setup(*args, **kwargs)
-                    for query, dataset, dataframe in page(*args, **kwargs):
-                        yield Greatschools_Schools_WebCache(query, {dataset:dataframe})
+                    for dataset, data in page(*args, **kwargs):
+                        yield query, Greatschools_Schools_WebDatasets({dataset: data})
 
+#                while page.crawl(queue):
+#                    page.setup(*args, **kwargs)
+#                    for query, dataset, dataframe in page(*args, **kwargs):
+#                        yield Greatschools_Schools_WebCache(query, {dataset:dataframe})
+
+    @property
     def links(self, *args, **kwargs):
         dataframe = self.load(QUEUE_FILE)[["GID", "link"]]
         dataframe.set_index("GID", inplace=True)
@@ -322,10 +333,10 @@ class Greatschools_Schools_WebDownloader(WebDownloader, delay=30, attempts=10):
 
 def main(*args, **kwargs): 
     delayer = Greatschools_Schools_WebDelayer("random", wait=(60, 120))
-    scheduler = Greatschools_Schools_WebScheduler(REPORT_FILE, *args, days=30, **kwargs)
-    queue = scheduler(*args, **kwargs)
-    downloader = Greatschools_Schools_WebDownloader(REPOSITORY_DIR, REPORT_FILE, *args, delayer=delayer, queue=queue, **kwargs)
-    downloader(*args, **kwargs)
+    scheduler = Greatschools_Schools_WebScheduler(*args, file=QUEUE_FILE, **kwargs)
+    downloader = Greatschools_Schools_WebDownloader(*args, repository=REPOSITORY_DIR, **kwargs)
+    queue = scheduler(*args, file=REPORT_FILE, **kwargs)
+    downloader(*args, delayer=delayer, queue=queue, **kwargs)
     while True: 
         if downloader.off:
             break
