@@ -32,8 +32,7 @@ from webscraping.webtimers import WebDelayer
 from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebRequestPage
-from webscraping.webpages import MissingRequestError
-from webscraping.webpages import WebContents, WebCrawlingContents
+from webscraping.webpages import WebContents, MissingRequestError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDatasets
 from webscraping.webqueues import WebScheduler
@@ -192,13 +191,10 @@ class Greatschools_Schools_WebContents(WebContents):
     STUDENTTEACHERS = Greatschools_StudentTeachers
 
 
-class Greatschools_Schools_WebCrawlingContents(WebCrawlingContents): pass
-
-
 Greatschools_Schools_WebContents.CRAWLER += Greatschools_Crawler
 
 
-class Greatschools_Schools_WebPage(WebRequestPage):
+class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools_WebContents):
     def setup(self, *args, **kwargs): 
         for content in iter(self.load):
             content(*args, **kwargs)

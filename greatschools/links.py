@@ -30,8 +30,7 @@ from webscraping.webtimers import WebDelayer
 from webscraping.webdrivers import WebDriver
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, CrawlingMixin
-from webscraping.webpages import BadRequestError, MulliganError
-from webscraping.webpages import WebContents, WebIterationContents, WebPaginationContents, WebCaptchaContents
+from webscraping.webpages import WebContents, BadRequestError, MulliganError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDatasets
 from webscraping.webqueues import WebScheduler
@@ -167,11 +166,6 @@ class Greatschools_Links_WebContents(WebContents):
     RESULTS = Greatschools_Results
 
 
-class Greatschools_Links_WebIterationContents(WebIterationContents): pass
-class Greatschools_Links_WebPaginationContents(WebPaginationContents): pass
-class Greatschools_Links_WebCaptchaContents(WebCaptchaContents): pass
-
-
 Greatschools_Links_WebContents.CAPTCHA += Greatschools_Captcha_ClearCaptcha
 Greatschools_Links_WebContents.BADREQUEST += Greatschools_BadRequest
 Greatschools_Links_WebContents.ITERATOR += Greatschools_Contents
@@ -181,7 +175,7 @@ Greatschools_Links_WebContents.CURRENT += Greatschools_Current
 Greatschools_Links_WebContents.PAGINATION += Greatschools_Pagination_MoveToClick
 
 
-class Greatschools_Links_WebPage(WebBrowserPage + IterationMixin + PaginationMixin + CrawlingMixin):
+class Greatschools_Links_WebPage(WebBrowserPage, IterationMixin, PaginationMixin, CrawlingMixin, contents=Greatschools_Links_WebContents):
     def setup(self, *args, **kwargs):
         self.load[Greatschools_Links_WebContents.ZIPCODE](*args, **kwargs)
         self.load[Greatschools_Links_WebContents.RESULTS](*args, **kwargs)
