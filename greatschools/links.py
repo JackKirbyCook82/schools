@@ -35,7 +35,7 @@ from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDatasets
 from webscraping.webqueues import WebScheduler
 from webscraping.webdownloaders import WebDownloader, CacheMixin, AttemptsMixin
-from webscraping.webdata import WebClickable, WebText, WebLink, WebBadRequest, WebCaptcha
+from webscraping.webdata import WebClickable, WebKeyedClickable, WebText, WebLink, WebKeyedLink, WebBadRequest, WebCaptcha
 from webscraping.webactions import WebMoveToClick, WebClearCaptcha
 from webscraping.webvariables import Address
 
@@ -175,7 +175,7 @@ Greatschools_Links_WebContents.CURRENT += Greatschools_Current
 Greatschools_Links_WebContents.PAGINATION += Greatschools_Pagination_MoveToClick
 
 
-class Greatschools_Links_WebPage(WebBrowserPage, IterationMixin, PaginationMixin, CrawlingMixin, contents=Greatschools_Links_WebContents):
+class Greatschools_Links_WebPage(WebBrowserPage + (IterationMixin, PaginationMixin, CrawlingMixin), contents=Greatschools_Links_WebContents):
     def setup(self, *args, **kwargs):
         self.load[Greatschools_Links_WebContents.ZIPCODE](*args, **kwargs)
         self.load[Greatschools_Links_WebContents.RESULTS](*args, **kwargs)
@@ -199,14 +199,14 @@ class Greatschools_Links_WebPage(WebBrowserPage, IterationMixin, PaginationMixin
             return
  
 
-class Greatschools_Links_WebDownloader(WebDownloader + CacheMixin + AttemptsMixin, basis=["GID"], attempts=3, delay=30):
+class Greatschools_Links_WebDownloader(WebDownloader + (CacheMixin, AttemptsMixin), basis="GID", attempts=3, delay=30):
     @staticmethod
     def execute(*args, queue, delayer, **kwargs):
         with Greatschools_Links_WebDriver(DRIVER_FILE, browser="chrome", loadtime=50) as driver:
             page = Greatschools_Links_WebPage(driver, delayer=delayer)
             for query in iter(queue):
-                with query(lambda x: x.todict()) as items:
-                    url = Greatschools_Links_WebURL(**items)
+                with query:
+                    url = Greatschools_Links_WebURL(**query.todict())
                     try:
                         page.load(url, referer=None)
                     except BadRequestError:
@@ -216,17 +216,12 @@ class Greatschools_Links_WebDownloader(WebDownloader + CacheMixin + AttemptsMixi
                     for dataset, data in page(*args, **kwargs):
                         yield query, Greatschools_Links_WebDatasets({dataset: data})
 
-#                while page.crawl(queue):
-#                    page.setup(*args, **kwargs)
-#                    for query, dataset, dataframe in page(*args, **kwargs):
-#                        yield Greatschools_Links_WebCache(query, {dataset: dataframe})
-
     
 def main(*args, **kwargs): 
     delayer = Greatschools_Links_WebDelayer("random", wait=(15, 30))
-    scheduler = Greatschools_Links_WebScheduler(*args, file=QUEUE_FILE, **kwargs)
+    scheduler = Greatschools_Links_WebScheduler(*args, file=REPORT_FILE, **kwargs)
     downloader = Greatschools_Links_WebDownloader(*args, repository=REPOSITORY_DIR, **kwargs)
-    queue = scheduler(*args, file=REPORT_FILE, **kwargs)
+    queue = scheduler(*args, **kwargs)
     downloader(*args, delayer=delayer, queue=queue, **kwargs)
     LOGGER.info(str(downloader))
     for results in downloader.results:

@@ -37,7 +37,7 @@ from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDatasets
 from webscraping.webqueues import WebScheduler
 from webscraping.webdownloaders import WebDownloader, CacheMixin, AttemptsMixin
-from webscraping.webdata import WebText, WebLink
+from webscraping.webdata import WebText, WebLink, WebKeyedLink
 from webscraping.webvariables import Address, Price
 
 __version__ = "1.0.0"
@@ -135,7 +135,7 @@ class Greatschools_LowIncome(WebText, loader=low_income_webloader, parsers={"dat
 class Greatschools_NoEnglish(WebText, loader=no_english_webloader, parsers={"data": graph_percent_parser}, optional=True): pass
 class Greatschools_Experience(WebText, loader=experience_webloader, parsers={"data": percent_parser}, optional=True): pass
 class Greatschools_StudentTeachers(WebText, loader=student_teachers_webloader, parsers={"data": ratio_parser}, optional=True): pass
-class Greatschools_Crawler(WebLink, loader=crawler_webloader, parsers={"key": crawler_keyparser, "link": crawler_linkparser}, optional=True): pass
+class Greatschools_Crawler(WebKeyedLink, loader=crawler_webloader, parsers={"key": crawler_keyparser, "link": crawler_linkparser}, optional=True): pass
 
 
 class Greatschools_Schools_WebDelayer(WebDelayer): pass 
@@ -298,13 +298,13 @@ class Greatschools_Schools_WebPage(WebRequestPage, contents=Greatschools_Schools
         yield data
 
 
-class Greatschools_Schools_WebDownloader(WebDownloader + CacheMixin + AttemptsMixin, attempts=10, delay=25):
+class Greatschools_Schools_WebDownloader(WebDownloader + (CacheMixin, AttemptsMixin), attempts=10, delay=25):
     def execute(self, *args, queue, delayer, **kwargs):
         with Greatschools_Schools_WebReader() as session:
             page = Greatschools_Schools_WebPage(session, delayer=delayer)
             for query in iter(queue):
-                with query(lambda x: x.todict()) as items:
-                    url = self.links[items["GID"]]
+                with query:
+                    url = self.links[query.todict()["GID"]]
                     try:
                         page.load(url, referer=None)
                     except MissingRequestError:
@@ -313,11 +313,14 @@ class Greatschools_Schools_WebDownloader(WebDownloader + CacheMixin + AttemptsMi
                     page.setup(*args, **kwargs)
                     for dataset, data in page(*args, **kwargs):
                         yield query, Greatschools_Schools_WebDatasets({dataset: data})
-
-#                while page.crawl(queue):
-#                    page.setup(*args, **kwargs)
-#                    for query, dataset, dataframe in page(*args, **kwargs):
-#                        yield Greatschools_Schools_WebCache(query, {dataset:dataframe})
+                for key, link in page.crawling():
+                    if hash(key) not in queue:
+                        continue
+                    with queue[key]() as crawl:
+                        page.crawl(hash(crawl))
+                        page.setup(*args, **kwargs)
+                        for dataset, dataframe in page(*args, **kwargs):
+                            yield query, Greatschools_Schools_WebDatasets({dataset: dataframe})
 
     @property
     def links(self, *args, **kwargs):
@@ -329,9 +332,9 @@ class Greatschools_Schools_WebDownloader(WebDownloader + CacheMixin + AttemptsMi
 
 def main(*args, **kwargs): 
     delayer = Greatschools_Schools_WebDelayer("random", wait=(60, 120))
-    scheduler = Greatschools_Schools_WebScheduler(*args, file=QUEUE_FILE, **kwargs)
+    scheduler = Greatschools_Schools_WebScheduler(*args, file=REPORT_FILE, **kwargs)
     downloader = Greatschools_Schools_WebDownloader(*args, repository=REPOSITORY_DIR, **kwargs)
-    queue = scheduler(*args, file=REPORT_FILE, **kwargs)
+    queue = scheduler(*args, **kwargs)
     downloader(*args, delayer=delayer, queue=queue, **kwargs)
     while True: 
         if downloader.off:
