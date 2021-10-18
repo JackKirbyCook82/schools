@@ -313,11 +313,11 @@ class Greatschools_Schools_WebDownloader(WebDownloader + (CacheMixin, AttemptsMi
                     page.setup(*args, **kwargs)
                     for dataset, data in page(*args, **kwargs):
                         yield query, Greatschools_Schools_WebDatasets({dataset: data})
-                for key, link in page.crawling():
+                for key in page.crawling():
                     if hash(key) not in queue:
                         continue
-                    with queue[key]() as crawl:
-                        page.crawl(hash(crawl))
+                    with queue[key] as crawlquery:
+                        page.crawl(hash(crawlquery))
                         page.setup(*args, **kwargs)
                         for dataset, dataframe in page(*args, **kwargs):
                             yield query, Greatschools_Schools_WebDatasets({dataset: dataframe})
