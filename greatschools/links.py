@@ -33,9 +33,9 @@ from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin
 from webscraping.webpages import WebContents, BadRequestError, MulliganError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDatasets
-from webscraping.webqueues import WebScheduler
+from webscraping.webqueues import WebScheduler, WebQueueable
 from webscraping.webdownloaders import WebDownloader, CacheMixin, AttemptsMixin
-from webscraping.webdata import WebClickable, WebKeyedClickable, WebText, WebLink, WebKeyedLink, WebBadRequest, WebCaptcha
+from webscraping.webdata import WebClickable, WebText, WebLink, WebBadRequest, WebCaptcha, WebClickables
 from webscraping.webactions import WebMoveToClick, WebClearCaptcha
 from webscraping.webvariables import Address
 
@@ -44,6 +44,7 @@ __author__ = "Jack Kirby Cook"
 __all__ = ["Greatschools_Links_WebDelayer", "Greatschools_Links_WebDownloader", "Greatschools_Links_WebScheduler"]
 __copyright__ = "Copyright 2021, Jack Kirby Cook"
 __license__ = ""
+__project__ = {"website": "GreatSchools", "project": "Links"}
 
 
 LOGGER = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ class Greatschools_Captcha(WebCaptcha, loader=captcha_webloader, optional=True):
 class Greatschools_BadRequest(WebBadRequest, loader=badrequest_webloader, optional=True): pass
 class Greatschools_Zipcode(WebText, loader=zipcode_webloader, parsers={"data": zipcode_parser}): pass
 class Greatschools_Results(WebText, loader=results_webloader, parsers={"data": results_parser}, optional=True): pass
-class Greatschools_Contents(WebClickable, loader=contents_webloader, optional=True): pass
+class Greatschools_Contents(WebClickables, loader=contents_webloader, optional=True): pass
 class Greatschools_ContentsLink(WebLink, loader=link_contents_webloader, parsers={"data": identity_parser}): pass
 class Greatschools_ContentsAddress(WebText, loader=address_contents_webloader, parsers={"data": address_parser}, optional=True): pass
 class Greatschools_ContentsName(WebText, loader=name_contents_webloader, parsers={"data": name_parser}, optional=True): pass
@@ -137,11 +138,11 @@ class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschoo
                 [item.replace(" ", self.spaceproxy).lower() for item in (kwargs["city"], kwargs["state"])])}
 
 
-class Greatschools_Links_WebQuery(WebQuery, fields=["dataset", "zipcode"]): pass
-class Greatschools_Links_WebDatasets(WebDatasets, feilds=["links"]): pass
+class Greatschools_Links_WebQuery(WebQuery, WebQueueable, fields=["dataset", "zipcode"], **__project__): pass
+class Greatschools_Links_WebDatasets(WebDatasets, fields=["links"], **__project__): pass
 
 
-class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"], dataset=["school"]):
+class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"], dataset=["school"], **__project__):
     def zipcode(self, *args, state, county=None, countys=[], city=None, citys=[], **kwargs):
         dataframe = self.load(QUEUE_FILE)
         assert all([isinstance(item, (str, type(None))) for item in (county, city)])
@@ -180,7 +181,7 @@ class Greatschools_Links_WebPage(WebBrowserPage + (IterationMixin, PaginationMix
         self.load[Greatschools_Links_WebContents.ZIPCODE](*args, **kwargs)
         self.load[Greatschools_Links_WebContents.RESULTS](*args, **kwargs)
         if not bool(self[Greatschools_Links_WebContents.ZIPCODE]):
-            raise MulliganError(str(self))
+            raise MulliganError(self)
 
     @property
     def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebContents.ZIPCODE].data())}
@@ -204,17 +205,18 @@ class Greatschools_Links_WebDownloader(WebDownloader + (CacheMixin, AttemptsMixi
     def execute(*args, queue, delayer, **kwargs):
         with Greatschools_Links_WebDriver(DRIVER_FILE, browser="chrome", loadtime=50) as driver:
             page = Greatschools_Links_WebPage(driver, delayer=delayer)
-            for query in iter(queue):
-                with query:
-                    url = Greatschools_Links_WebURL(**query.todict())
-                    try:
-                        page.load(url, referer=None)
-                    except BadRequestError:
-                        yield query, Greatschools_Links_WebDatasets({})
-                        continue
-                    page.setup(*args, **kwargs)
-                    for dataset, data in page(*args, **kwargs):
-                        yield query, Greatschools_Links_WebDatasets({dataset: data})
+            with queue:
+                for query in iter(queue):
+                    with query:
+                        url = Greatschools_Links_WebURL(**query.todict())
+                        try:
+                            page.load(url, referer=None)
+                        except BadRequestError:
+                            yield query, Greatschools_Links_WebDatasets({})
+                            continue
+                        page.setup(*args, **kwargs)
+                        for dataset, data in page(*args, **kwargs):
+                            yield query, Greatschools_Links_WebDatasets({dataset: data})
 
     
 def main(*args, **kwargs): 
@@ -224,7 +226,8 @@ def main(*args, **kwargs):
     queue = scheduler(*args, **kwargs)
     downloader(*args, delayer=delayer, queue=queue, **kwargs)
     LOGGER.info(str(downloader))
-    for results in downloader.results:
+    for query, results in downloader.results:
+        LOGGER.info(str(query))
         LOGGER.info(str(results))
     if not bool(downloader):
         raise downloader.error
