@@ -30,7 +30,7 @@ from webscraping.webtimers import WebDelayer
 from webscraping.webdrivers import WebDriver
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, CrawlingMixin
-from webscraping.webpages import WebContents, BadRequestError, MulliganError
+from webscraping.webpages import WebDatas, WebActions, BadRequestError, MulliganError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDatasets
 from webscraping.webqueues import WebScheduler, WebQueueable
@@ -114,7 +114,7 @@ Greatschools_Contents["type"] = Greatschools_ContentsType
 class Greatschools_Captcha_ClearCaptcha(WebClearCaptcha, on=Greatschools_Captcha, wait=60*5): pass
 class Greatschools_Previous_MoveToClick(WebMoveToClick, on=Greatschools_Previous): pass
 class Greatschools_NextPage_MoveToClick(WebMoveToClick, on=Greatschools_NextPage): pass
-class Greatschools_Pagination_MoveToClick(WebMoveToClick, on=Greatschools_Pagination,): pass
+class Greatschools_Pagination_MoveToClick(WebMoveToClick, on=Greatschools_Pagination): pass
 
 
 class Greatschools_Links_WebDelayer(WebDelayer): pass
@@ -162,32 +162,40 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
     def execute(querys, *args, **kwargs): return [Greatschools_Links_WebQuery(query) for query in querys]
 
 
-class Greatschools_Links_WebContents(WebContents):
+class Greatschools_Links_WebDatas(WebDatas):
     ZIPCODE = Greatschools_Zipcode
     RESULTS = Greatschools_Results
 
 
-Greatschools_Links_WebContents.CAPTCHA += Greatschools_Captcha_ClearCaptcha
-Greatschools_Links_WebContents.BADREQUEST += Greatschools_BadRequest
-Greatschools_Links_WebContents.ITERATOR += Greatschools_Contents
-Greatschools_Links_WebContents.PREVIOUS += Greatschools_Previous_MoveToClick
-Greatschools_Links_WebContents.NEXT += Greatschools_NextPage_MoveToClick
-Greatschools_Links_WebContents.CURRENT += Greatschools_Current
-Greatschools_Links_WebContents.PAGINATION += Greatschools_Pagination_MoveToClick
+Greatschools_Links_WebDatas.CAPTCHA += Greatschools_Captcha
+Greatschools_Links_WebDatas.BADREQUEST += Greatschools_BadRequest
+Greatschools_Links_WebDatas.PAGINATION += Greatschools_Pagination
+Greatschools_Links_WebDatas.ITERATOR += Greatschools_Contents
+Greatschools_Links_WebDatas.CURRENT += Greatschools_Current
 
 
-class Greatschools_Links_WebPage(WebBrowserPage + (IterationMixin, PaginationMixin, CrawlingMixin), contents=Greatschools_Links_WebContents):
+class Greatschools_Links_WebActions(WebActions):
+    pass
+
+
+Greatschools_Links_WebActions.CAPTCHA += Greatschools_Captcha_ClearCaptcha
+Greatschools_Links_WebActions.PREVIOUS += Greatschools_Previous_MoveToClick
+Greatschools_Links_WebActions.NEXT += Greatschools_NextPage_MoveToClick
+Greatschools_Links_WebActions.PAGINATION += Greatschools_Pagination_MoveToClick
+
+
+class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, CrawlingMixin, WebBrowserPage, datas=Greatschools_Links_WebDatas, actions=Greatschools_Links_WebActions):
     def setup(self, *args, **kwargs):
-        self.load[Greatschools_Links_WebContents.ZIPCODE](*args, **kwargs)
-        self.load[Greatschools_Links_WebContents.RESULTS](*args, **kwargs)
-        if not bool(self[Greatschools_Links_WebContents.ZIPCODE]):
+        self.load[Greatschools_Links_WebDatas.ZIPCODE](*args, **kwargs)
+        self.load[Greatschools_Links_WebDatas.RESULTS](*args, **kwargs)
+        if not bool(self[Greatschools_Links_WebDatas.ZIPCODE]):
             raise MulliganError(self)
 
     @property
-    def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebContents.ZIPCODE].data())}
+    def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebDatas.ZIPCODE].data())}
 
     def execute(self, *args, **kwargs):
-        if not bool(self[Greatschools_Links_WebContents.RESULTS]):
+        if not bool(self[Greatschools_Links_WebDatas.RESULTS]):
             return
         for content in iter(self):
             data = {"GID": content["link"].data(), "address": content["address"].data(), "link": content["link"].url}
