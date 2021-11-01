@@ -186,8 +186,6 @@ Greatschools_Links_WebActions.PAGINATION += Greatschools_Pagination_MoveToClick
 
 class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, CrawlingMixin, WebBrowserPage, datas=Greatschools_Links_WebDatas, actions=Greatschools_Links_WebActions):
     def setup(self, *args, **kwargs):
-        self.load[Greatschools_Links_WebDatas.ZIPCODE](*args, **kwargs)
-        self.load[Greatschools_Links_WebDatas.RESULTS](*args, **kwargs)
         if not bool(self[Greatschools_Links_WebDatas.ZIPCODE]):
             raise MulliganError(self)
 
@@ -208,7 +206,7 @@ class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, CrawlingMixin,
             return
  
 
-class Greatschools_Links_WebDownloader(WebDownloader + (CacheMixin, AttemptsMixin), basis="GID", attempts=3, delay=30):
+class Greatschools_Links_WebDownloader(CacheMixin, AttemptsMixin, WebDownloader, basis="GID", attempts=3, delay=30):
     @staticmethod
     def execute(*args, queue, delayer, **kwargs):
         with Greatschools_Links_WebDriver(DRIVER_FILE, browser="chrome", loadtime=50) as driver:
