@@ -18,7 +18,7 @@ ROOT_DIR = os.path.abspath(os.path.join(MOD_DIR, os.pardir))
 SAVE_DIR = os.path.join(ROOT_DIR, "save")
 RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
-DRIVER_FILE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
+DRIVER_EXE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
 QUEUE_FILE = os.path.join(RESOURCE_DIR, "zipcodes.zip.csv")
 REPORT_FILE = os.path.join(REPOSITORY_DIR, "links.csv")
 if ROOT_DIR not in sys.path:
@@ -167,11 +167,9 @@ class Greatschools_Links_WebDatas(WebDatas):
     RESULTS = Greatschools_Results
 
 
-Greatschools_Links_WebDatas.CAPTCHA += Greatschools_Captcha
 Greatschools_Links_WebDatas.BADREQUEST += Greatschools_BadRequest
-Greatschools_Links_WebDatas.PAGINATION += Greatschools_Pagination
 Greatschools_Links_WebDatas.ITERATOR += Greatschools_Contents
-Greatschools_Links_WebDatas.CURRENT += Greatschools_Current
+Greatschools_Links_WebDatas.NEXT += Greatschools_NextPage
 
 
 class Greatschools_Links_WebActions(WebActions):
@@ -179,9 +177,7 @@ class Greatschools_Links_WebActions(WebActions):
 
 
 Greatschools_Links_WebActions.CAPTCHA += Greatschools_Captcha_ClearCaptcha
-Greatschools_Links_WebActions.PREVIOUS += Greatschools_Previous_MoveToClick
 Greatschools_Links_WebActions.NEXT += Greatschools_NextPage_MoveToClick
-Greatschools_Links_WebActions.PAGINATION += Greatschools_Pagination_MoveToClick
 
 
 class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, CrawlingMixin, WebBrowserPage, datas=Greatschools_Links_WebDatas, actions=Greatschools_Links_WebActions):
@@ -206,10 +202,10 @@ class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, CrawlingMixin,
             return
  
 
-class Greatschools_Links_WebDownloader(CacheMixin, AttemptsMixin, WebDownloader, basis="GID", attempts=3, delay=30):
+class Greatschools_Links_WebDownloader(AttemptsMixin, CacheMixin, WebDownloader, basis="GID", attempts=3, sleep=30, **__project__):
     @staticmethod
     def execute(*args, queue, delayer, **kwargs):
-        with Greatschools_Links_WebDriver(DRIVER_FILE, browser="chrome", loadtime=50) as driver:
+        with Greatschools_Links_WebDriver(DRIVER_EXE, browser="chrome", loadtime=50) as driver:
             page = Greatschools_Links_WebPage(driver, delayer=delayer)
             with queue:
                 for query in iter(queue):
@@ -226,7 +222,7 @@ class Greatschools_Links_WebDownloader(CacheMixin, AttemptsMixin, WebDownloader,
 
     
 def main(*args, **kwargs): 
-    delayer = Greatschools_Links_WebDelayer("random", wait=(15, 30))
+    delayer = Greatschools_Links_WebDelayer("random", wait=(10, 20))
     scheduler = Greatschools_Links_WebScheduler(*args, file=REPORT_FILE, **kwargs)
     downloader = Greatschools_Links_WebDownloader(*args, repository=REPOSITORY_DIR, **kwargs)
     queue = scheduler(*args, **kwargs)
