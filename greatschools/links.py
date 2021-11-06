@@ -32,7 +32,7 @@ from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, CrawlingMixin
 from webscraping.webpages import WebDatas, WebActions, BadRequestError, MulliganError
 from webscraping.webloaders import WebLoader
-from webscraping.webquerys import WebQuery, WebDatasets
+from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable
 from webscraping.webdownloaders import WebDownloader, CacheMixin, AttemptsMixin
 from webscraping.webdata import WebClickable, WebText, WebLink, WebBadRequest, WebCaptcha, WebClickables
@@ -139,7 +139,7 @@ class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschoo
 
 
 class Greatschools_Links_WebQuery(WebQuery, WebQueueable, fields=["dataset", "zipcode"], **__project__): pass
-class Greatschools_Links_WebDatasets(WebDatasets, fields=["links"], **__project__): pass
+class Greatschools_Links_WebDataset(WebDataset, fields=["links"], **__project__): pass
 
 
 class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"], dataset=["school"], **__project__):
@@ -214,11 +214,11 @@ class Greatschools_Links_WebDownloader(AttemptsMixin, CacheMixin, WebDownloader,
                         try:
                             page.load(url, referer=None)
                         except BadRequestError:
-                            yield query, Greatschools_Links_WebDatasets({})
+                            yield query, Greatschools_Links_WebDataset({})
                             continue
                         page.setup(*args, **kwargs)
                         for dataset, data in page(*args, **kwargs):
-                            yield query, Greatschools_Links_WebDatasets({dataset: data})
+                            yield query, Greatschools_Links_WebDataset({dataset: data})
 
     
 def main(*args, **kwargs): 
