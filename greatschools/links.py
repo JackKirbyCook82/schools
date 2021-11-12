@@ -19,6 +19,7 @@ SAVE_DIR = os.path.join(ROOT_DIR, "save")
 RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
 DRIVER_EXE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
+NORDVPN_EXE = os.path.join("C:/", "Program Files", "NordVPN", "NordVPN.exe")
 QUEUE_FILE = os.path.join(RESOURCE_DIR, "zipcodes.zip.csv")
 REPORT_FILE = os.path.join(REPOSITORY_DIR, "links.csv")
 if ROOT_DIR not in sys.path:
@@ -26,22 +27,23 @@ if ROOT_DIR not in sys.path:
 
 from utilities.input import InputParser
 from utilities.dataframes import dataframe_parser
-from webscraping.webtimers import WebDelayer
+from webscraping.webtimers import WebDelayer, WebRuntime
+from webscraping.webvpn import NordVPN
 from webscraping.webdrivers import WebDriver
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, CrawlingMixin
+from webscraping.webpages import WebBrowserPage, CrawlingMixin, IterationMixin, PaginationMixin, CrawlingMixin
 from webscraping.webpages import WebDatas, WebActions, BadRequestError, MulliganError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable
-from webscraping.webdownloaders import WebDownloader, CacheMixin, AttemptsMixin
+from webscraping.webdownloaders import WebDownloader, CacheMixin
 from webscraping.webdata import WebClickable, WebText, WebLink, WebBadRequest, WebCaptcha, WebClickables
 from webscraping.webactions import WebMoveToClick, WebClearCaptcha
 from webscraping.webvariables import Address
 
 __version__ = "1.0.0"
 __author__ = "Jack Kirby Cook"
-__all__ = ["Greatschools_Links_WebDelayer", "Greatschools_Links_WebDownloader", "Greatschools_Links_WebScheduler"]
+__all__ = ["Greatschools_Links_WebDelayer", "Greatschools_Links_WebRuntime", "Greatschools_Links_WebDownloader", "Greatschools_Links_WebScheduler"]
 __copyright__ = "Copyright 2021, Jack Kirby Cook"
 __license__ = ""
 __project__ = {"website": "GreatSchools", "project": "Links"}
@@ -81,7 +83,8 @@ current_webloader = WebLoader(xpath=current_xpath)
 pagination_webloader = WebLoader(xpath=pagination_xpath)
 
 
-identity_parser = lambda x: x.replace("https://www.greatschools.org", "")
+identity_pattern = "(?<=\/)\d+(?=\-)"
+identity_parser = lambda x: str(re.findall(identity_pattern, x)[0])
 zipcode_parser = lambda x: str(re.findall(r"\d{5}$", x)[0])
 results_parser = lambda x: str(re.findall(r"(?<=of )[\d\,]+(?= schools)", x)[0])
 address_parser = lambda x: Address.fromsearch(x)
@@ -118,11 +121,13 @@ class Greatschools_Pagination_MoveToClick(WebMoveToClick, on=Greatschools_Pagina
 
 
 class Greatschools_Links_WebDelayer(WebDelayer): pass
+class Greatschools_Links_WebRuntime(WebRuntime): pass
 class Greatschools_Links_WebDriver(WebDriver, options={"headless": False, "images": True, "incognito": False}): pass
 
 
-class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschools.org", separator="%20", spaceproxy="-"):
-    def path(self, *args, **kwargs):
+class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschools.org"):
+    @staticmethod
+    def path(*args, **kwargs):
         if "zipcode" in kwargs.keys():
             return ["search", "search.zipcode"]
         elif "city" in kwargs.keys() and "state" in kwargs.keys():
@@ -130,12 +135,12 @@ class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschoo
         else:
             raise ValueError(list(kwargs.keys()))
 
-    def parm(self, *args, **kwargs):
+    @staticmethod
+    def parm(*args, **kwargs):
         if "zipcode" in kwargs.keys():
             return {"zip": "{:05.0f}".format(int(kwargs["zipcode"]))}
         else:
-            return {"q": self.separator.join(
-                [item.replace(" ", self.spaceproxy).lower() for item in (kwargs["city"], kwargs["state"])])}
+            return {"q": "%20".join([item.replace(" ", "-").lower() for item in (kwargs["city"], kwargs["state"])])}
 
 
 class Greatschools_Links_WebQuery(WebQuery, WebQueueable, fields=["dataset", "zipcode"], **__project__): pass
@@ -180,29 +185,30 @@ Greatschools_Links_WebActions.CAPTCHA += Greatschools_Captcha_ClearCaptcha
 Greatschools_Links_WebActions.NEXT += Greatschools_NextPage_MoveToClick
 
 
-class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, CrawlingMixin, WebBrowserPage, datas=Greatschools_Links_WebDatas, actions=Greatschools_Links_WebActions):
+class Greatschools_Links_WebPage(CrawlingMixin, IterationMixin, PaginationMixin, CrawlingMixin, WebBrowserPage, datas=Greatschools_Links_WebDatas, actions=Greatschools_Links_WebActions):
     def setup(self, *args, **kwargs):
         if not bool(self[Greatschools_Links_WebDatas.ZIPCODE]):
             raise MulliganError(self)
 
-    @property
-    def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebDatas.ZIPCODE].data())}
-
     def execute(self, *args, **kwargs):
         if not bool(self[Greatschools_Links_WebDatas.RESULTS]):
             return
+        query = self.query()
         for content in iter(self):
             data = {"GID": content["link"].data(), "address": content["address"].data(), "link": content["link"].url}
-            yield "links", data
+            yield query, "links", data
         nextpage = next(self)
         if bool(nextpage):
             nextpage.setup(*args, **kwargs)
             yield from nextpage(*args, **kwargs)
         else:
             return
+
+    def query(self):
+        return {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebDatas.ZIPCODE].data())}
  
 
-class Greatschools_Links_WebDownloader(AttemptsMixin, CacheMixin, WebDownloader, basis="GID", attempts=3, sleep=30, **__project__):
+class Greatschools_Links_WebDownloader(CacheMixin, WebDownloader, basis="GID", **__project__):
     @staticmethod
     def execute(*args, queue, delayer, **kwargs):
         with Greatschools_Links_WebDriver(DRIVER_EXE, browser="chrome", loadtime=50) as driver:
@@ -212,28 +218,31 @@ class Greatschools_Links_WebDownloader(AttemptsMixin, CacheMixin, WebDownloader,
                     with query:
                         url = Greatschools_Links_WebURL(**query.todict())
                         try:
-                            page.load(url, referer=None)
+                            page.load(url, referer="http://www.google.com")
                         except BadRequestError:
                             yield query, Greatschools_Links_WebDataset({})
-                            continue
+                            return
                         page.setup(*args, **kwargs)
-                        for dataset, data in page(*args, **kwargs):
-                            yield query, Greatschools_Links_WebDataset({dataset: data})
+                        for fields, dataset, data in page(*args, **kwargs):
+                            yield Greatschools_Links_WebQuery(fields), Greatschools_Links_WebDataset({dataset: data})
 
     
-def main(*args, **kwargs): 
+def main(*args, proxylimit=5, **kwargs):
     delayer = Greatschools_Links_WebDelayer("random", wait=(10, 20))
+    vpn = NordVPN(NORDVPN_EXE, server="United States", wait=10)
     scheduler = Greatschools_Links_WebScheduler(*args, file=REPORT_FILE, **kwargs)
     downloader = Greatschools_Links_WebDownloader(*args, repository=REPOSITORY_DIR, **kwargs)
     queue = scheduler(*args, **kwargs)
-    downloader(*args, delayer=delayer, queue=queue, **kwargs)
+    while bool(queue):
+        with vpn:
+            downloader(*args, queue=queue.export(proxylimit), delayer=delayer, **kwargs)
     LOGGER.info(str(downloader))
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))
     if not bool(downloader):
         raise downloader.error
-    
+
 
 if __name__ == "__main__":
     sys.argv += ["state=CA", "city=Bakersfield"]
