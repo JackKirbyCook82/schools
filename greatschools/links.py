@@ -27,12 +27,11 @@ if ROOT_DIR not in sys.path:
 
 from utilities.input import InputParser
 from utilities.dataframes import dataframe_parser
-from webscraping.webtimers import WebDelayer, WebRuntime
+from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import NordVPN
 from webscraping.webdrivers import WebDriver
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebBrowserPage, CrawlingMixin, IterationMixin, PaginationMixin, CrawlingMixin
-from webscraping.webpages import WebDatas, WebActions, BadRequestError, MulliganError
+from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, CrawlingMixin, WebDatas, WebActions, BadRequestError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable
@@ -43,7 +42,7 @@ from webscraping.webvariables import Address
 
 __version__ = "1.0.0"
 __author__ = "Jack Kirby Cook"
-__all__ = ["Greatschools_Links_WebDelayer", "Greatschools_Links_WebRuntime", "Greatschools_Links_WebDownloader", "Greatschools_Links_WebScheduler"]
+__all__ = ["Greatschools_Links_WebDelayer", "Greatschools_Links_WebDownloader", "Greatschools_Links_WebScheduler"]
 __copyright__ = "Copyright 2021, Jack Kirby Cook"
 __license__ = ""
 __project__ = {"website": "GreatSchools", "project": "Links"}
@@ -121,7 +120,6 @@ class Greatschools_Pagination_MoveToClick(WebMoveToClick, on=Greatschools_Pagina
 
 
 class Greatschools_Links_WebDelayer(WebDelayer): pass
-class Greatschools_Links_WebRuntime(WebRuntime): pass
 class Greatschools_Links_WebDriver(WebDriver, options={"headless": False, "images": True, "incognito": False}): pass
 
 
@@ -170,25 +168,20 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
 class Greatschools_Links_WebDatas(WebDatas):
     ZIPCODE = Greatschools_Zipcode
     RESULTS = Greatschools_Results
-
-
-Greatschools_Links_WebDatas.BADREQUEST += Greatschools_BadRequest
-Greatschools_Links_WebDatas.ITERATOR += Greatschools_Contents
-Greatschools_Links_WebDatas.NEXT += Greatschools_NextPage
+    BADREQUEST = Greatschools_BadRequest
+    ITERATOR = Greatschools_Contents
+    NEXT = Greatschools_NextPage
 
 
 class Greatschools_Links_WebActions(WebActions):
-    pass
+    CAPTCHA = Greatschools_Captcha_ClearCaptcha
+    NEXT = Greatschools_NextPage_MoveToClick
 
 
-Greatschools_Links_WebActions.CAPTCHA += Greatschools_Captcha_ClearCaptcha
-Greatschools_Links_WebActions.NEXT += Greatschools_NextPage_MoveToClick
-
-
-class Greatschools_Links_WebPage(CrawlingMixin, IterationMixin, PaginationMixin, CrawlingMixin, WebBrowserPage, datas=Greatschools_Links_WebDatas, actions=Greatschools_Links_WebActions):
+class Greatschools_Links_WebPage(CrawlingMixin, IterationMixin, PaginationMixin, WebBrowserPage, datas=Greatschools_Links_WebDatas, actions=Greatschools_Links_WebActions):
     def setup(self, *args, **kwargs):
         if not bool(self[Greatschools_Links_WebDatas.ZIPCODE]):
-            raise MulliganError(self)
+            pass
 
     def execute(self, *args, **kwargs):
         if not bool(self[Greatschools_Links_WebDatas.RESULTS]):
@@ -211,6 +204,8 @@ class Greatschools_Links_WebPage(CrawlingMixin, IterationMixin, PaginationMixin,
 class Greatschools_Links_WebDownloader(CacheMixin, WebDownloader, basis="GID", **__project__):
     @staticmethod
     def execute(*args, queue, delayer, **kwargs):
+        if not queue:
+            return
         with Greatschools_Links_WebDriver(DRIVER_EXE, browser="chrome", loadtime=50) as driver:
             page = Greatschools_Links_WebPage(driver, delayer=delayer)
             with queue:
@@ -236,6 +231,8 @@ def main(*args, proxylimit=5, **kwargs):
     while bool(queue):
         with vpn:
             downloader(*args, queue=queue.export(proxylimit), delayer=delayer, **kwargs)
+            if not bool(downloader):
+                break
     LOGGER.info(str(downloader))
     for query, results in downloader.results:
         LOGGER.info(str(query))

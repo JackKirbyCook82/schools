@@ -19,6 +19,7 @@ SAVE_DIR = os.path.join(ROOT_DIR, "save")
 RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
 USERAGENTS_FILE = os.path.join(RESOURCE_DIR, "useragents.zip.jl")
+NORDVPN_EXE = os.path.join("C:/", "Program Files", "NordVPN", "NordVPN.exe")
 QUEUE_FILE = os.path.join(SAVE_DIR, "links.zip.csv")
 REPORT_FILE = os.path.join(SAVE_DIR, "schools.csv")
 if ROOT_DIR not in sys.path:
@@ -26,7 +27,8 @@ if ROOT_DIR not in sys.path:
 
 from utilities.input import InputParser
 from utilities.dataframes import dataframe_parser
-from webscraping.webtimers import WebDelayer, WebRuntime
+from webscraping.webtimers import WebDelayer
+from webscraping.webvpn import NordVPN
 from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebRequestPage, WebDatas, webpage_bypass_error
@@ -39,7 +41,7 @@ from webscraping.webvariables import Address
 
 __version__ = "1.0.0"
 __author__ = "Jack Kirby Cook"
-__all__ = ["Greatschools_Schools_WebDelayer", "Greatschools_Schools_WebRuntime", "Greatschools_Schools_WebDownloader", "Greatschools_Schools_WebScheduler"]
+__all__ = ["Greatschools_Schools_WebDelayer", "Greatschools_Schools_WebDownloader", "Greatschools_Schools_WebScheduler"]
 __copyright__ = "Copyright 2021, Jack Kirby Cook"
 __license__ = ""
 __project__ = {"website": "GreatSchools", "project": "Schools"}
@@ -101,7 +103,6 @@ class Greatschools_DemographicValues(WebTexts, webloader=demographic_values_webl
 
 
 class Greatschools_Schools_WebDelayer(WebDelayer): pass
-class Greatschools_Schools_WebRuntime(WebRuntime): pass
 class Greatschools_Schools_WebReader(WebReader, retrys=Retrys(retries=3, backoff=0.3, httpcodes=(500, 502, 504)), headers=Headers(UserAgents.load(USERAGENTS_FILE, limit=100)), authenticate=None): pass
 
 
@@ -185,7 +186,6 @@ class Greatschools_Schools_WebDownloader(AttemptsMixin, CacheMixin, WebDownloade
                         page.setup(*args, **kwargs)
                         for fields, dataset, data in page(*args, **kwargs):
                             yield Greatschools_Schools_WebQuery(fields), Greatschools_Schools_WebDataset({dataset: data})
-                        yield from page(*args, **kwargs)
 
     def get(self, *args, GID, **kwargs):
         dataframe = self.load(QUEUE_FILE)[["GID", "link"]]
@@ -194,12 +194,17 @@ class Greatschools_Schools_WebDownloader(AttemptsMixin, CacheMixin, WebDownloade
         return series.get(GID)
 
 
-def main(*args, **kwargs): 
+def main(*args, proxylimit=15, **kwargs):
     delayer = Greatschools_Schools_WebDelayer("random", wait=(30, 120))
+    vpn = NordVPN(NORDVPN_EXE, server="United States", wait=10)
     scheduler = Greatschools_Schools_WebScheduler(*args, file=REPORT_FILE, **kwargs)
     downloader = Greatschools_Schools_WebDownloader(*args, repository=REPOSITORY_DIR, **kwargs)
     queue = scheduler(*args, **kwargs)
-    downloader(*args, delayer=delayer, queue=queue, **kwargs)
+    while bool(queue):
+        with vpn:
+            downloader(*args, queue=queue.export(proxylimit), delayer=delayer, **kwargs)
+            if not bool(downloader):
+                break
     LOGGER.info(repr(downloader))
     for query, results in downloader.results:
         LOGGER.info(str(query))
@@ -209,7 +214,7 @@ def main(*args, **kwargs):
 
 
 if __name__ == "__main__":
-    sys.argv += ["state=CA", "city=Bakersfield", "proxycap=10"]
+    sys.argv += ["state=CA", "city=Bakersfield"]
     logging.basicConfig(level="INFO", format="[%(levelname)s, %(threadName)s]:  %(message)s",
                         handlers=[logging.StreamHandler(sys.stdout)])
     inputparser = InputParser(proxys={"assign": "=", "space": "_"}, parsers={}, default=str)
