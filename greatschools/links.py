@@ -31,7 +31,7 @@ from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import NordVPN
 from webscraping.webdrivers import WebDriver
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, CrawlingMixin, WebDatas, WebActions, BadRequestError
+from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, CrawlingMixin, WebPageContents, BadRequestError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable
@@ -165,26 +165,24 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
     def execute(querys, *args, **kwargs): return [Greatschools_Links_WebQuery(query) for query in querys]
 
 
-class Greatschools_Links_WebDatas(WebDatas):
+class Greatschools_Links_WebContents(WebPageContents):
     ZIPCODE = Greatschools_Zipcode
     RESULTS = Greatschools_Results
-    BADREQUEST = Greatschools_BadRequest
-    ITERATOR = Greatschools_Contents
-    NEXT = Greatschools_NextPage
 
 
-class Greatschools_Links_WebActions(WebActions):
-    CAPTCHA = Greatschools_Captcha_ClearCaptcha
-    NEXT = Greatschools_NextPage_MoveToClick
+Greatschools_Links_WebContents.BADREQUEST += Greatschools_BadRequest
+Greatschools_Links_WebContents.CAPTCHA += Greatschools_Captcha_ClearCaptcha
+Greatschools_Links_WebContents.ITERATOR += Greatschools_Contents
+Greatschools_Links_WebContents.NEXT += Greatschools_NextPage_MoveToClick
 
 
-class Greatschools_Links_WebPage(CrawlingMixin, IterationMixin, PaginationMixin, WebBrowserPage, datas=Greatschools_Links_WebDatas, actions=Greatschools_Links_WebActions):
+class Greatschools_Links_WebPage(CrawlingMixin, IterationMixin, PaginationMixin, WebBrowserPage, contents=Greatschools_Links_WebContents):
     def setup(self, *args, **kwargs):
-        if not bool(self[Greatschools_Links_WebDatas.ZIPCODE]):
+        if not bool(self[Greatschools_Links_WebContents.ZIPCODE]):
             pass
 
     def execute(self, *args, **kwargs):
-        if not bool(self[Greatschools_Links_WebDatas.RESULTS]):
+        if not bool(self[Greatschools_Links_WebContents.RESULTS]):
             return
         query = self.query()
         for content in iter(self):
@@ -198,7 +196,7 @@ class Greatschools_Links_WebPage(CrawlingMixin, IterationMixin, PaginationMixin,
             return
 
     def query(self):
-        return {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebDatas.ZIPCODE].data())}
+        return {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebContents.ZIPCODE].data())}
  
 
 class Greatschools_Links_WebDownloader(CacheMixin, WebDownloader, basis="GID", **__project__):
