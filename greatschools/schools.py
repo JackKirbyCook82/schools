@@ -12,6 +12,7 @@ import warnings
 import logging
 import regex as re
 from abc import ABC
+from threading import Thread
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 MOD_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
@@ -34,7 +35,7 @@ from webscraping.webvpn import NordVPN
 from webscraping.webdrivers import WebBrowser
 from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebContentPage, WebPageContents, webpage_bypass
+from webscraping.webpages import WebContentPage, WebPageContents, RefusalError, CaptchaError, BadRequestError, webpage_bypass
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable
@@ -119,7 +120,7 @@ class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatsch
         return [address.state, address.city, "{GID}_{name}".format(GID=str(GID), name="-".join(str(name).split(" ")))]
 
 
-class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
+class Greatschools_Schools_WebQuery(WebQueueable, WebQuery, fields=["GID"]): pass
 class Greatschools_Schools_WebDataset(WebDataset, fields=["school", "scores", "testing", "demographics"]): pass
 
 
@@ -200,24 +201,27 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=Greatschools_Sc
 
 
 class Greatschools_Schools_WebDownloader(CacheMixin, WebDownloader, **__project__):
-    def execute(self, *args, browser, reader, queue, delayer, **kwargs):
+    def execute(self, *args, browser, reader, queue, delayer, vpn, **kwargs):
         if not bool(queue):
             return
         with browser() as driver:
             with queue:
                 for query in iter(queue):
                     with query:
-                        url = self.url(**query.todict())
-                        url = Greatschools_Schools_WebURL.fromstr(str(url))
-                        page = Greatschools_Schools_WebPage(driver, delayer=delayer)
-                        page.load(url, referer="http://www.google.com")
-                        if page.badrequest:
+                        if not bool(self.vpn):
+                            self.sleep()
+                        try:
+                            url = self.url(**query.todict())
+                            url = Greatschools_Schools_WebURL.fromstr(str(url))
+                            page = Greatschools_Schools_WebPage(driver, delayer=delayer)
+                            page.load(url, referer="http://www.google.com")
+                            page.setup(*args, **kwargs)
+                            for fields, dataset, data in page(*args, **kwargs):
+                                yield Greatschools_Schools_WebQuery(fields), Greatschools_Schools_WebDataset({dataset: data})
+                        except (RefusalError, CaptchaError):
+                            self.vpn.trip()
+                        except BadRequestError:
                             break
-                        if page.refusal or page.captcha:
-                            pass
-                        page.setup(*args, **kwargs)
-                        for fields, dataset, data in page(*args, **kwargs):
-                            yield Greatschools_Schools_WebQuery(fields), Greatschools_Schools_WebDataset({dataset: data})
 
     def url(self, *args, GID, **kwargs):
         dataframe = self.load(QUEUE_FILE)[["GID", "link"]]
@@ -228,15 +232,19 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebDownloader, **__project_
 
 
 def main(*args, **kwargs):
-#    vpn = NordVPN(NORDVPN_EXE, server="United States", wait=10)
+    vpn = NordVPN("NordVPN", file=NORDVPN_EXE, server="United States", wait=10)
     delayer = Greatschools_Schools_WebDelayer("random", wait=(30, 120))
     reader = Greatschools_Schools_WebReader(wait=5)
     browser = Greatschools_Schools_WebBrowser(DRIVER_EXE, browser="chrome", loadtime=50, wait=10)
     scheduler = Greatschools_Schools_WebScheduler(*args, file=REPORT_FILE, size=25, **kwargs)
-    downloader = Greatschools_Schools_WebDownloader(*args, repository=REPOSITORY_DIR, **kwargs)
+    downloader = Greatschools_Schools_WebDownloader("Schools", *args, repository=REPOSITORY_DIR, **kwargs)
+    vpn += downloader
+
     for queue in iter(scheduler)(*args, **kwargs):
         while bool(queue):
-            downloader(*args, browser=browser, reader=reader, queue=queue, delayer=delayer, **kwargs)
+            thread = Thread(target=downloader, name=downloader.name, daemon=False, kwargs=dict(browser=browser, queue=queue, delayer=delayer))
+            vpnthread = Thread(target=vpn, name=vpn.name, daemon=False)
+
             if not bool(downloader):
                 break
         if not bool(downloader):
@@ -245,7 +253,7 @@ def main(*args, **kwargs):
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))
-    if not bool(downloader):
+    if bool(downloader.error):
         raise downloader.error
 
 
