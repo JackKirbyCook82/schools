@@ -226,12 +226,12 @@ def main(*args, **kwargs):
     downloader = Greatschools_Links_WebDownloader(*args, repository=REPOSITORY_DIR, **kwargs)
     vpn += downloader
     queue = scheduler(*args, **kwargs)
-    vpnthread = Thread(target=vpn, name="NordVPN", daemon=False)
-    thread = Thread(target=downloader, name="GreatSchoolsLinks", daemon=False, kwargs=dict(browser=browser, queue=queue, delayer=delayer))
-    vpnthread.start()
-    thread.start()
-    vpnthread.join()
-    thread.join()
+#    vpnthread = Thread(target=vpn, name="NordVPN", daemon=False)
+#    thread = Thread(target=downloader, name="GreatSchoolsLinks", daemon=False, kwargs=dict(browser=browser, queue=queue, delayer=delayer))
+#    vpnthread.start()
+#    thread.start()
+#    vpnthread.join()
+#    thread.join()
     LOGGER.info(str(downloader))
     for query, results in downloader.results:
         LOGGER.info(str(query))

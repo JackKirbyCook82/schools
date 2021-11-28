@@ -241,8 +241,10 @@ def main(*args, **kwargs):
     vpn += downloader
     for queue in iter(scheduler)(*args, **kwargs):
         while bool(queue):
-            vpnthread = Thread(target=vpn, name="NordVPN", daemon=False)
-            thread = Thread(target=downloader, name="Schools", daemon=False, kwargs=dict(browser=browser, queue=queue, delayer=delayer))
+            pass
+
+#            vpnthread = Thread(target=vpn, name="NordVPN", daemon=False)
+#            thread = Thread(target=downloader, name="Schools", daemon=False, kwargs=dict(browser=browser, queue=queue, delayer=delayer))
 
             if not bool(downloader):
                 break
