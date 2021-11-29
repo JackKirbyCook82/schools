@@ -11,7 +11,6 @@ import os.path
 import warnings
 import logging
 import regex as re
-from threading import Thread
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 MOD_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
@@ -29,14 +28,14 @@ if ROOT_DIR not in sys.path:
 from utilities.input import InputParser
 from utilities.dataframes import dataframe_parser
 from webscraping.webtimers import WebDelayer
-from webscraping.webvpn import NordWebVPN
+from webscraping.webvpn import WebVPN
 from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, WebPageContents, RefusalError, CaptchaError, BadRequestError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable
-from webscraping.webdownloaders import WebDownloader, CacheMixin, VPNMixin
+from webscraping.webdownloaders import WebDownloader, CacheMixin
 from webscraping.webdata import WebClickable, WebText, WebLink, WebClickables, WebBadRequest, WebCaptcha
 from webscraping.webactions import WebMoveToClick, WebClearCaptcha
 from webscraping.webvariables import Address
@@ -195,7 +194,7 @@ class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage
             return
 
 
-class Greatschools_Links_WebDownloader(VPNMixin, CacheMixin, WebDownloader, basis="GID", **__project__):
+class Greatschools_Links_WebDownloader(CacheMixin, WebDownloader, basis="GID", **__project__):
     def execute(self, *args, browser, queue, delayer, vpn, **kwargs):
         if not bool(queue):
             return
@@ -218,20 +217,18 @@ class Greatschools_Links_WebDownloader(VPNMixin, CacheMixin, WebDownloader, basi
                             break
 
 
+class Nord_WebVPN(WebVPN, connect=["{file}", "-c", "-g", "{server}"], disconnect=["{file}", "-d"]):
+    pass
+
+
 def main(*args, **kwargs):
-    vpn = NordWebVPN(file=NORDVPN_EXE, server="United States", wait=10)
     delayer = Greatschools_Links_WebDelayer("random", wait=(10, 20))
     browser = Greatschools_Links_WebBrowser(DRIVER_EXE, browser="chrome", loadtime=50, wait=10)
     scheduler = Greatschools_Links_WebScheduler(*args, file=REPORT_FILE, size=None, **kwargs)
-    downloader = Greatschools_Links_WebDownloader(*args, repository=REPOSITORY_DIR, **kwargs)
-    vpn += downloader
+    downloader = Greatschools_Links_WebDownloader("GreatSchoolLinks", *args, repository=REPOSITORY_DIR, **kwargs)
+    vpn = Nord_WebVPN("GreatSchoolVPN", file=NORDVPN_EXE, server="United States", wait=10)
     queue = scheduler(*args, **kwargs)
-#    vpnthread = Thread(target=vpn, name="NordVPN", daemon=False)
-#    thread = Thread(target=downloader, name="GreatSchoolsLinks", daemon=False, kwargs=dict(browser=browser, queue=queue, delayer=delayer))
-#    vpnthread.start()
-#    thread.start()
-#    vpnthread.join()
-#    thread.join()
+
     LOGGER.info(str(downloader))
     for query, results in downloader.results:
         LOGGER.info(str(query))
