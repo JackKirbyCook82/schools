@@ -28,7 +28,7 @@ if ROOT_DIR not in sys.path:
 from utilities.input import InputParser
 from utilities.dataframes import dataframe_parser
 from webscraping.webtimers import WebDelayer
-from webscraping.webvpn import WebVPN
+from webscraping.webvpn import WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, WebPageContents, RefusalError, CaptchaError, BadRequestError
@@ -194,8 +194,8 @@ class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage
             return
 
 
-class Greatschools_Links_WebDownloader(CacheMixin, WebDownloader, basis="GID", **__project__):
-    def execute(self, *args, browser, queue, delayer, vpn, **kwargs):
+class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader, basis="GID", **__project__):
+    def execute(self, *args, browser, queue, delayer, **kwargs):
         if not bool(queue):
             return
         with browser() as driver:
@@ -203,7 +203,11 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebDownloader, basis="GID", *
                 for query in iter(queue):
                     with query:
                         if not bool(self.vpn):
+                            self.terminate()
+                        elif bool(self.vpn.compromised):
                             self.sleep()
+                        else:
+                            pass
                         try:
                             url = Greatschools_Links_WebURL(**query.todict())
                             page = Greatschools_Links_WebPage(driver, delayer=delayer)
@@ -228,7 +232,14 @@ def main(*args, **kwargs):
     downloader = Greatschools_Links_WebDownloader("GreatSchoolLinks", *args, repository=REPOSITORY_DIR, **kwargs)
     vpn = Nord_WebVPN("GreatSchoolVPN", file=NORDVPN_EXE, server="United States", wait=10)
     queue = scheduler(*args, **kwargs)
-
+    vpn += downloader
+    downloader(**dict(browser=browser, queue=queue, delayer=delayer))
+    downloader.start()
+    downloader.join()
+#    vpn.start()
+#    vpn.join()
+#    if bool(vpn.error):
+#        raise vpn.error
     LOGGER.info(str(downloader))
     for query, results in downloader.results:
         LOGGER.info(str(query))

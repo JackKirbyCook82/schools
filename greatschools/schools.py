@@ -30,7 +30,7 @@ if ROOT_DIR not in sys.path:
 from utilities.input import InputParser
 from utilities.dataframes import dataframe_parser
 from webscraping.webtimers import WebDelayer
-from webscraping.webvpn import WebVPN
+from webscraping.webvpn import WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
@@ -199,8 +199,8 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=Greatschools_Sc
         return {**self.query(), **demographics}
 
 
-class Greatschools_Schools_WebDownloader(CacheMixin, WebDownloader, **__project__):
-    def execute(self, *args, browser, reader, queue, delayer, vpn, **kwargs):
+class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader, **__project__):
+    def execute(self, *args, browser, reader, queue, delayer, **kwargs):
         if not bool(queue):
             return
         with browser() as driver:
@@ -208,7 +208,11 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebDownloader, **__project_
                 for query in iter(queue):
                     with query:
                         if not bool(self.vpn):
+                            self.terminate()
+                        elif bool(self.vpn.compromised):
                             self.sleep()
+                        else:
+                            pass
                         try:
                             url = self.url(**query.todict())
                             url = Greatschools_Schools_WebURL.fromstr(str(url))
@@ -241,14 +245,18 @@ def main(*args, **kwargs):
     scheduler = Greatschools_Schools_WebScheduler(*args, file=REPORT_FILE, size=25, **kwargs)
     downloader = Greatschools_Schools_WebDownloader("Schools", *args, repository=REPOSITORY_DIR, **kwargs)
     vpn = Nord_WebVPN("VPN", file=NORDVPN_EXE, server="United States", wait=10)
+    vpn += downloader
     for queue in iter(scheduler)(*args, **kwargs):
         while bool(queue):
             pass
+
 
             if not bool(downloader):
                 break
         if not bool(downloader):
             break
+
+
     LOGGER.info(repr(downloader))
     for query, results in downloader.results:
         LOGGER.info(str(query))
