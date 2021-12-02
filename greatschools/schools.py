@@ -119,7 +119,7 @@ class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatsch
         return [address.state, address.city, "{GID}_{name}".format(GID=str(GID), name="-".join(str(name).split(" ")))]
 
 
-class Greatschools_Schools_WebQuery(WebQueueable, WebQuery, fields=["GID"]): pass
+class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
 class Greatschools_Schools_WebDataset(WebDataset, fields=["school", "scores", "testing", "demographics"]): pass
 
 
@@ -207,22 +207,11 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloade
             with queue:
                 for query in iter(queue):
                     with query:
-                        if not bool(self.vpn):
-                            self.terminate()
-                        elif bool(self.vpn.compromised):
-                            self.sleep()
-                        else:
-                            pass
+                        self.gate(None)
                         try:
-                            url = self.url(**query.todict())
-                            url = Greatschools_Schools_WebURL.fromstr(str(url))
-                            page = Greatschools_Schools_WebPage(driver, delayer=delayer)
-                            page.load(url, referer="http://www.google.com")
-                            page.setup(*args, **kwargs)
-                            for fields, dataset, data in page(*args, **kwargs):
-                                yield Greatschools_Schools_WebQuery(fields), Greatschools_Schools_WebDataset({dataset: data})
+                            yield from self.page(driver, query, *args, **kwargs)
                         except (RefusalError, CaptchaError):
-                            self.vpn.trip()
+                            self.trip()
                         except BadRequestError:
                             break
 
@@ -233,6 +222,15 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloade
         series = dataframe.squeeze(axis=1)
         return series.get(GID)
 
+    def page(self, driver, query, *args, delayer, **kwargs):
+        url = self.url(**query.todict())
+        url = Greatschools_Schools_WebURL.fromstr(str(url))
+        page = Greatschools_Schools_WebPage(driver, delayer=delayer)
+        page.load(url, referer="http://www.google.com")
+        page.setup(*args, **kwargs)
+        for fields, dataset, data in page(*args, **kwargs):
+            yield Greatschools_Schools_WebQuery(fields), Greatschools_Schools_WebDataset({dataset: data})
+
 
 class Nord_WebVPN(WebVPN, connect=["{file}", "-c", "-g", "{server}"], disconnect=["{file}", "-d"]):
     pass
@@ -241,23 +239,22 @@ class Nord_WebVPN(WebVPN, connect=["{file}", "-c", "-g", "{server}"], disconnect
 def main(*args, **kwargs):
     delayer = Greatschools_Schools_WebDelayer("random", wait=(30, 120))
     reader = Greatschools_Schools_WebReader(wait=5)
-    browser = Greatschools_Schools_WebBrowser(DRIVER_EXE, browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Schools_WebScheduler(*args, file=REPORT_FILE, size=25, **kwargs)
-    downloader = Greatschools_Schools_WebDownloader("Schools", *args, repository=REPOSITORY_DIR, **kwargs)
+    browser = Greatschools_Schools_WebBrowser(file=DRIVER_EXE, browser="chrome", loadtime=50, wait=10)
+    scheduler = Greatschools_Schools_WebScheduler(file=REPORT_FILE, size=25)
+    downloader = Greatschools_Schools_WebDownloader("Schools", repository=REPOSITORY_DIR)
     vpn = Nord_WebVPN("VPN", file=NORDVPN_EXE, server="United States", wait=10)
-    vpn += downloader
+
     for queue in iter(scheduler)(*args, **kwargs):
         while bool(queue):
             pass
-
 
             if not bool(downloader):
                 break
         if not bool(downloader):
             break
 
-
-    LOGGER.info(repr(downloader))
+    if bool(vpn.error):
+        raise vpn.error
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))
