@@ -184,40 +184,35 @@ class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage
 
 
 class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader, basis="GID", **__project__):
-    def execute(self, *args, browser, queue, **kwargs):
-        if not bool(queue):
-            return
-        with browser() as driver:
-            with queue:
-                for query in queue:
-                    with query:
-                        url = self.url(**query.todict())
-                        while True:
-                            if not bool(self.vpn):
-                                self.vpn.wait()
-                            if not bool(driver):
-                                driver.restart()
-                            try:
-                                yield from self.page(driver, url, *args, **kwargs)
-                            except (RefusalError, CaptchaError):
-                                url = driver.current
-                                driver.trip()
-                                self.trip()
-                            except BadRequestError:
-                                break
-                            else:
-                                break
+    def execute(self, *args, browser, queue, delayer, **kwargs):
+        pass
 
-    @staticmethod
-    def url(**query): return Greatschools_Links_WebURL(**query)
-
-    @staticmethod
-    def page(driver, url, *args, delayer, **kwargs):
-        page = Greatschools_Links_WebPage(driver, delayer=delayer)
-        page.load(str(url), referer="https://www.google.com")
-        page.setup(*args, **kwargs)
-        for fields, dataset, data in page(*args, **kwargs):
-            yield Greatschools_Links_WebQuery(fields), Greatschools_Links_WebDataset({dataset: data})
+#    def execute(self, *args, browser, queue, delayer, **kwargs):
+#        if not bool(queue):
+#            return
+#        with browser() as driver:
+#            page = Greatschools_Links_WebPage(driver, delayer=delayer)
+#            with queue:
+#                for query in queue:
+#                    with query:
+#                        url = Greatschools_Links_WebURL(**query.todict())
+#                        while True:
+#                            if not bool(self.vpn):
+#                                self.vpn.wait()
+#                            if not bool(driver):
+#                                driver.restart()
+#                            try:
+#                                page.load(str(url), referer="https://www.google.com")
+#                                page.setup(*args, **kwargs)
+#                                for fields, dataset, data in page(*args, **kwargs):
+#                                    yield Greatschools_Links_WebQuery(fields), Greatschools_Links_WebDataset({dataset: data})
+#                            except (RefusalError, CaptchaError):
+#                                driver.trip()
+#                                self.trip()
+#                            except BadRequestError:
+#                                break
+#                            else:
+#                                break
 
 
 class Nord_WebVPN(WebVPN, connect=["{file}", "-c", "-g", "{server}"], disconnect=["{file}", "-d"]):

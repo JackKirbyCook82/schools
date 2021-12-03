@@ -29,6 +29,7 @@ if ROOT_DIR not in sys.path:
 
 from utilities.input import InputParser
 from utilities.dataframes import dataframe_parser
+from utilities.sync import load
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
@@ -198,47 +199,18 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=Greatschools_Sc
         return {**self.query(), **demographics}
 
 
+# def queuefile(*args, GID, **kwargs):
+#    urls = load(QUEUE_FILE)[["GID", "link"]]
+#    urls["GID"] = urls["GID"].apply(str)
+#    urls.set_index("GID", inplace=True)
+#    series = urls.squeeze(axis=1)
+#    url = series.get(GID)
+#    return url
+
+
 class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader, **__project__):
-    def execute(self, *args, browser, reader, queue, delayer, **kwargs):
-        if not bool(queue):
-            return
-        with browser() as driver:
-            with queue:
-                for query in queue:
-                    with query:
-                        urls = self.load(QUEUE_FILE)[["GID", "link"]]
-                        url = self.url(urls, **query.todict())
-                        while True:
-                            if not bool(self.vpn):
-                                self.vpn.wait()
-                            if not bool(driver):
-                                driver.restart()
-                            try:
-                                yield from self.page(driver, url, *args, **kwargs)
-                            except (RefusalError, CaptchaError):
-                                url = driver.current
-                                driver.trip()
-                                self.trip()
-                            except BadRequestError:
-                                break
-                            else:
-                                break
-
-    @staticmethod
-    def url(urls, *args, GID, **kwargs):
-        urls["GID"] = urls["GID"].apply(str)
-        urls.set_index("GID", inplace=True)
-        series = urls.squeeze(axis=1)
-        url = series.get(GID)
-        return Greatschools_Schools_WebURL.fromstr(str(url))
-
-    @staticmethod
-    def page(driver, url, *args, delayer, **kwargs):
-        page = Greatschools_Schools_WebPage(driver, delayer=delayer)
-        page.load(url, referer="http://www.google.com")
-        page.setup(*args, **kwargs)
-        for fields, dataset, data in page(*args, **kwargs):
-            yield Greatschools_Schools_WebQuery(fields), Greatschools_Schools_WebDataset({dataset: data})
+    def execute(self, *args, browser, queue, delayer, **kwargs):
+        pass
 
 
 class Nord_WebVPN(WebVPN, connect=["{file}", "-c", "-g", "{server}"], disconnect=["{file}", "-d"]):
