@@ -160,14 +160,13 @@ class Greatschools_Schools_WebContents(WebPageContents):
 
 
 class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=Greatschools_Schools_WebContents):
+    def query(self): return {"GID": str(identity_parser(self.url))}
+
     def setup(self, *args, **kwargs):
         try:
             Greatschools_Scroll(self.driver)(*args, commands={"pagedown": 12}, **kwargs)
         except AttributeError:
             pass
-
-    def setup(self, *args, **kwargs): pass
-    def query(self): return {"GID": str(identity_parser(self.url))}
 
     def execute(self, *args, **kwargs):
         query = self.query()
@@ -205,26 +204,36 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloade
             return
         with browser() as driver:
             with queue:
-                for query in iter(queue):
+                for query in queue:
                     with query:
-                        self.gate(None)
-                        try:
-                            yield from self.page(driver, query, *args, **kwargs)
-                        except (RefusalError, CaptchaError):
-                            self.trip()
-                        except BadRequestError:
-                            break
+                        urls = self.load(QUEUE_FILE)[["GID", "link"]]
+                        url = self.url(urls, **query.todict())
+                        while True:
+                            if not bool(self.vpn):
+                                self.vpn.wait()
+                            if not bool(driver):
+                                driver.restart()
+                            try:
+                                yield from self.page(driver, url, *args, **kwargs)
+                            except (RefusalError, CaptchaError):
+                                url = driver.current
+                                driver.trip()
+                                self.trip()
+                            except BadRequestError:
+                                break
+                            else:
+                                break
 
-    def url(self, *args, GID, **kwargs):
-        dataframe = self.load(QUEUE_FILE)[["GID", "link"]]
-        dataframe["GID"] = dataframe["GID"].apply(str)
-        dataframe.set_index("GID", inplace=True)
-        series = dataframe.squeeze(axis=1)
-        return series.get(GID)
+    @staticmethod
+    def url(urls, *args, GID, **kwargs):
+        urls["GID"] = urls["GID"].apply(str)
+        urls.set_index("GID", inplace=True)
+        series = urls.squeeze(axis=1)
+        url = series.get(GID)
+        return Greatschools_Schools_WebURL.fromstr(str(url))
 
-    def page(self, driver, query, *args, delayer, **kwargs):
-        url = self.url(**query.todict())
-        url = Greatschools_Schools_WebURL.fromstr(str(url))
+    @staticmethod
+    def page(driver, url, *args, delayer, **kwargs):
         page = Greatschools_Schools_WebPage(driver, delayer=delayer)
         page.load(url, referer="http://www.google.com")
         page.setup(*args, **kwargs)
