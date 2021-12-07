@@ -49,7 +49,6 @@ __author__ = "Jack Kirby Cook"
 __all__ = ["Greatschools_Schools_WebDelayer", "Greatschools_Schools_WebDownloader", "Greatschools_Schools_WebScheduler"]
 __copyright__ = "Copyright 2021, Jack Kirby Cook"
 __license__ = ""
-__project__ = {"website": "GreatSchools", "project": "Schools"}
 
 
 LOGGER = logging.getLogger(__name__)
@@ -111,7 +110,7 @@ class Greatschools_DemographicValues(WebTexts, loader=demographic_values_webload
 class Greatschools_Scroll(WebScroll): pass
 class Greatschools_Schools_WebDelayer(WebDelayer): pass
 class Greatschools_Schools_WebReader(WebReader, retrys=Retrys(retries=3, backoff=0.3, httpcodes=(500, 502, 504)), headers=Headers(UserAgents.load(USERAGENTS_FILE, limit=100))): pass
-class Greatschools_Schools_WebBrowser(WebBrowser, options={"headless": False, "images": True, "incognito": False}): pass
+class Greatschools_Schools_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 
 
 class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatschools.org"):
@@ -208,19 +207,41 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=Greatschools_Sc
 #    return url
 
 
-class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader, **__project__):
-    def execute(self, *args, browser, queue, delayer, **kwargs):
-        pass
+class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader):
+    def execute(self, *args, browser, queue, delayer, referer="https://www.google.com", **kwargs):
+        if not bool(queue):
+            return
+        with queue:
+            with browser() as driver:
+                page = Greatschools_Schools_WebPage(driver, delayer=delayer)
+                for query in queue:
+                    if not bool(self.vpn):
+                        self.wait()
+                    if not bool(driver):
+                        driver.reset()
+                    with query:
+                        url = Greatschools_Schools_WebURL(**query.todict())
+                        try:
+                            page.load(str(url), referer=referer)
+                            page.setup(*args, **kwargs)
+                            for fields, dataset, data in page(*args, **kwargs):
+                                yield Greatschools_Schools_WebQuery(fields), Greatschools_Schools_WebDataset({dataset: data})
+                        except (RefusalError, CaptchaError) as error:
+                            driver.trip()
+                            self.trip()
+                            raise error
+                        except BadRequestError:
+                            pass
 
 
-class Nord_WebVPN(WebVPN, connect=["{file}", "-c", "-g", "{server}"], disconnect=["{file}", "-d"]):
+class Nord_WebVPN(WebVPN, file=NORDVPN_EXE, connect=["{file}", "-c", "-g", "{server}"], disconnect=["{file}", "-d"]):
     pass
 
 
 def main(*args, **kwargs):
     delayer = Greatschools_Schools_WebDelayer("random", wait=(30, 120))
     reader = Greatschools_Schools_WebReader(wait=5)
-    browser = Greatschools_Schools_WebBrowser(file=DRIVER_EXE, browser="chrome", loadtime=50, wait=10)
+    browser = Greatschools_Schools_WebBrowser(browser="chrome", loadtime=50, wait=10)
     scheduler = Greatschools_Schools_WebScheduler(file=REPORT_FILE, size=25)
     downloader = Greatschools_Schools_WebDownloader("Schools", repository=REPOSITORY_DIR)
     vpn = Nord_WebVPN("VPN", file=NORDVPN_EXE, server="United States", wait=10)
