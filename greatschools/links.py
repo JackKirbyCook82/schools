@@ -152,7 +152,7 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
         return list(dataframe["zipcode"].to_numpy())
 
     @staticmethod
-    def execute(querys, *args, **kwargs): return [Greatschools_Links_WebQuery(query) for query in querys]
+    def execute(querys, *args, **kwargs): return [Greatschools_Links_WebQuery(query, name="GreatSchoolsQuery") for query in querys]
 
 
 class Greatschools_Links_WebContents(WebPageContents):
@@ -190,7 +190,7 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
             return
         with queue:
             with browser() as driver:
-                page = Greatschools_Links_WebPage(driver, delayer=delayer)
+                page = Greatschools_Links_WebPage(driver, name="GreatSchoolsPage", delayer=delayer)
                 for query in queue:
                     with query:
                         url = Greatschools_Links_WebURL(**query.todict())
@@ -203,7 +203,7 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                                 page.load(str(url), referer=referer)
                                 page.setup(*args, **kwargs)
                                 for fields, dataset, data in page(*args, **kwargs):
-                                    yield Greatschools_Links_WebQuery(fields), Greatschools_Links_WebDataset({dataset: data})
+                                    yield Greatschools_Links_WebQuery(fields, name="GreatSchoolsQuery"), Greatschools_Links_WebDataset({dataset: data}, name="GreatSchoolsDataset")
                                 break
                             except (RefusalError, CaptchaError):
                                 driver.trip()
@@ -213,11 +213,11 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
 
 
 def main(*args, **kwargs):
-    delayer = Greatschools_Links_WebDelayer("random", wait=(10, 20))
-    browser = Greatschools_Links_WebBrowser(browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Links_WebScheduler(file=REPORT_FILE, size=None)
-    downloader = Greatschools_Links_WebDownloader("GreatSchoolLinks", repository=REPOSITORY_DIR)
-    vpn = Nord_WebVPN("GreatSchoolVPN", file=NORDVPN_EXE, server="United States", wait=10)
+    delayer = Greatschools_Links_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(10, 20))
+    browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
+    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", file=REPORT_FILE, size=None)
+    downloader = Greatschools_Links_WebDownloader(name="GreatSchoolsDownloader", repository=REPOSITORY_DIR)
+    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", wait=10)
     vpn += downloader
     queue = scheduler(*args, **kwargs)
     downloader(**dict(browser=browser, queue=queue, delayer=delayer))
