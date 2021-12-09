@@ -32,7 +32,7 @@ from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, WebPageContents, RefusalError, CaptchaError, BadRequestError
+from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, WebPageContents, RefusalError, CaptchaError, BadRequestError, PaginationError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable
@@ -210,6 +210,8 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                                 self.trip()
                             except BadRequestError:
                                 break
+                            except PaginationError as error:
+                                raise error
 
 
 def main(*args, **kwargs):
@@ -217,7 +219,7 @@ def main(*args, **kwargs):
     browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
     scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", file=REPORT_FILE, size=None)
     downloader = Greatschools_Links_WebDownloader(name="GreatSchoolsDownloader", repository=REPOSITORY_DIR)
-    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", wait=10)
+    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10)
     vpn += downloader
     queue = scheduler(*args, **kwargs)
     downloader(**dict(browser=browser, queue=queue, delayer=delayer))
