@@ -25,10 +25,11 @@ REPORT_FILE = os.path.join(REPOSITORY_DIR, "links.csv")
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from utilities.input import InputParser
+from utilities.iostream import InputParser
 from utilities.dataframes import dataframe_parser
+from utilities.sync import load
 from webscraping.webtimers import WebDelayer
-from webscraping.webvpn import WebVPN, WebVPNProcess
+from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, WebPageContents, RefusalError, CaptchaError, BadRequestError
@@ -42,7 +43,7 @@ from webscraping.webvariables import Address
 
 __version__ = "1.0.0"
 __author__ = "Jack Kirby Cook"
-__all__ = ["Greatschools_Links_WebDelayer", "Greatschools_Links_WebDownloader", "Greatschools_Links_WebScheduler"]
+__all__ = ["Greatschools_Links_WebDelayer", "Greatschools_Links_WebBrowser", "Greatschools_Links_WebDownloader", "Greatschools_Links_WebScheduler"]
 __copyright__ = "Copyright 2021, Jack Kirby Cook"
 __license__ = ""
 
@@ -134,8 +135,9 @@ class Greatschools_Links_WebDataset(WebDataset, fields=["links"]): pass
 
 
 class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"], dataset=["school"]):
-    def zipcode(self, *args, state, county=None, countys=[], city=None, citys=[], **kwargs):
-        dataframe = self.load(QUEUE_FILE)
+    @staticmethod
+    def zipcode(*args, state, county=None, countys=[], city=None, citys=[], **kwargs):
+        dataframe = load(QUEUE_FILE)
         assert all([isinstance(item, (str, type(None))) for item in (county, city)])
         assert all([isinstance(item, list) for item in (countys, citys)])
         countys = list(set([item for item in [county, *countys] if item]))
@@ -210,16 +212,12 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                                 break
 
 
-class Nord_WebVPN(WebVPN, file=NORDVPN_EXE, connect=["{file}", "-c", "-g", "{server}"], disconnect=["{file}", "-d"]):
-    pass
-
-
 def main(*args, **kwargs):
     delayer = Greatschools_Links_WebDelayer("random", wait=(10, 20))
-    scheduler = Greatschools_Links_WebScheduler(file=REPORT_FILE, size=None)
     browser = Greatschools_Links_WebBrowser(browser="chrome", loadtime=50, wait=10)
+    scheduler = Greatschools_Links_WebScheduler(file=REPORT_FILE, size=None)
     downloader = Greatschools_Links_WebDownloader("GreatSchoolLinks", repository=REPOSITORY_DIR)
-    vpn = Nord_WebVPN("GreatSchoolVPN", server="United States", wait=10)
+    vpn = Nord_WebVPN("GreatSchoolVPN", file=NORDVPN_EXE, server="United States", wait=10)
     vpn += downloader
     queue = scheduler(*args, **kwargs)
     downloader(**dict(browser=browser, queue=queue, delayer=delayer))

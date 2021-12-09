@@ -27,7 +27,7 @@ REPORT_FILE = os.path.join(REPOSITORY_DIR, "schools.csv")
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from utilities.input import InputParser
+from utilities.iostream import InputParser
 from utilities.dataframes import dataframe_parser
 from utilities.sync import load
 from webscraping.webtimers import WebDelayer
@@ -124,8 +124,9 @@ class Greatschools_Schools_WebDataset(WebDataset, fields=["school", "scores", "t
 
 
 class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
-    def GID(self, *args, state, city=None, citys=[], zipcode=None, zipcodes=[], **kwargs):
-        dataframe = self.load(QUEUE_FILE)
+    @staticmethod
+    def GID(*args, state, city=None, citys=[], zipcode=None, zipcodes=[], **kwargs):
+        dataframe = load(QUEUE_FILE)
         assert all([isinstance(item, (str, type(None))) for item in (zipcode, city)])
         assert all([isinstance(item, list) for item in (zipcodes, citys)])
         zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
