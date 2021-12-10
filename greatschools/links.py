@@ -10,6 +10,7 @@ import sys
 import os.path
 import warnings
 import logging
+import traceback
 import regex as re
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -231,7 +232,7 @@ def main(*args, **kwargs):
         LOGGER.info(str(query))
         LOGGER.info(str(results))
     if bool(downloader.error):
-        raise downloader.error
+        raise traceback.print_exception(*downloader.error)
 
 
 if __name__ == "__main__":
