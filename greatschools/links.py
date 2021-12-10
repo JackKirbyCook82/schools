@@ -114,7 +114,6 @@ Greatschools_Contents["name"] = Greatschools_ContentsName
 Greatschools_Contents["type"] = Greatschools_ContentsType
 
 
-class Greatschools_Captcha_ClearCaptcha(WebClearCaptcha, on=Greatschools_Captcha, wait=60*5): pass
 class Greatschools_Previous_MoveToClick(WebMoveToClick, on=Greatschools_Previous): pass
 class Greatschools_NextPage_MoveToClick(WebMoveToClick, on=Greatschools_NextPage): pass
 class Greatschools_Pagination_MoveToClick(WebMoveToClick, on=Greatschools_Pagination): pass
@@ -162,7 +161,7 @@ class Greatschools_Links_WebContents(WebPageContents):
 
 
 Greatschools_Links_WebContents.BADREQUEST += Greatschools_BadRequest
-Greatschools_Links_WebContents.CAPTCHA += Greatschools_Captcha_ClearCaptcha
+Greatschools_Links_WebContents.CAPTCHA += Greatschools_Captcha
 Greatschools_Links_WebContents.ITERATOR += Greatschools_Contents
 Greatschools_Links_WebContents.NEXT += Greatschools_NextPage_MoveToClick
 
@@ -227,7 +226,7 @@ def main(*args, **kwargs):
     vpn.start()
     vpn.join()
     if bool(vpn.error):
-        raise vpn.error
+        traceback.print_exception(*vpn.error)
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))
