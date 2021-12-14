@@ -225,11 +225,11 @@ def main(*args, **kwargs):
     downloader(**dict(browser=browser, queue=queue, delayer=delayer))
     vpn.start()
     vpn.join()
-    if bool(vpn.error):
-        traceback.print_exception(*vpn.error)
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))
+    if bool(vpn.error):
+        traceback.print_exception(*vpn.error)
     if bool(downloader.error):
         raise traceback.print_exception(*downloader.error)
 

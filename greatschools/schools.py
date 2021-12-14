@@ -279,13 +279,13 @@ def main(*args, **kwargs):
         vpn.join()
         if bool(downloader.error):
             break
-    if bool(vpn.error):
-        traceback.print_exception(*vpn.error)
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))
+    if bool(vpn.error):
+        traceback.print_exception(*vpn.error)
     if bool(downloader.error):
-        raise traceback.print_exception(*downloader.error)
+        traceback.print_exception(*downloader.error)
 
 
 if __name__ == "__main__":
