@@ -36,7 +36,7 @@ from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, WebPageContents, RefusalError, CaptchaError, BadRequestError, PaginationError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
-from webscraping.webqueues import WebScheduler, WebQueueable
+from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
 from webscraping.webdownloaders import WebDownloader, CacheMixin
 from webscraping.webdata import WebClickable, WebText, WebLink, WebClickables, WebBadRequest, WebCaptcha
 from webscraping.webactions import WebMoveToClick, WebClearCaptcha
@@ -130,6 +130,7 @@ class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschoo
     def parm(*args, zipcode, pagination=1, **kwargs): return {"page": str(int(pagination)) if pagination > 1 else None, "sort": "rating", "zip": "{:05.0f}".format(int(zipcode))}
 
 
+class Greatschools_Links_WebQueue(WebQueue): pass
 class Greatschools_Links_WebQuery(WebQuery, WebQueueable, fields=["dataset", "zipcode"]): pass
 class Greatschools_Links_WebDataset(WebDataset, fields=["links"]): pass
 
@@ -152,7 +153,10 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
         return list(dataframe["zipcode"].to_numpy())
 
     @staticmethod
-    def execute(querys, *args, **kwargs): return [Greatschools_Links_WebQuery(query, name="GreatSchoolsQuery") for query in querys]
+    def execute(querys, *args, **kwargs):
+        queueables = [Greatschools_Links_WebQuery(query, name="GreatSchoolsQuery") for query in querys]
+        queue = Greatschools_Links_WebQueue(queueables, *args, name="GreatSchoolsQueue", **kwargs)
+        return queue
 
 
 class Greatschools_Links_WebContents(WebPageContents):
@@ -185,29 +189,29 @@ class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage
 
 
 class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader, basis="GID"):
-    def execute(self, *args, browser, queue, delayer, referer="https://www.google.com", **kwargs):
-        if not bool(queue):
-            return
-        with queue:
+    def execute(self, *args, browser, scheduler, delayer, referer="https://www.google.com", **kwargs):
+        with scheduler(*args, **kwargs) as queue:
+            if not queue:
+                return
             with browser() as driver:
                 page = Greatschools_Links_WebPage(driver, name="GreatSchoolsPage", delayer=delayer)
                 for query in queue:
                     with query:
                         url = Greatschools_Links_WebURL(**query.todict())
                         while True:
-                            if not bool(self.vpn):
-                                self.wait()
-                            if not bool(driver):
-                                driver.reset()
+#                            if not bool(self.vpn):
+#                                self.wait()
+#                            if not bool(driver):
+#                                driver.reset()
                             try:
                                 page.load(str(url), referer=referer)
                                 page.setup(*args, **kwargs)
                                 for fields, dataset, data in page(*args, **kwargs):
                                     yield Greatschools_Links_WebQuery(fields, name="GreatSchoolsQuery"), Greatschools_Links_WebDataset({dataset: data}, name="GreatSchoolsDataset")
                                 break
-                            except (RefusalError, CaptchaError):
-                                driver.trip()
-                                self.trip()
+#                            except (RefusalError, CaptchaError):
+#                                driver.trip()
+#                                self.trip()
                             except BadRequestError:
                                 break
                             except PaginationError as error:
@@ -217,21 +221,22 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
 def main(*args, **kwargs):
     delayer = Greatschools_Links_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(10, 20))
     browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", file=REPORT_FILE, size=None)
+    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
     downloader = Greatschools_Links_WebDownloader(name="GreatSchoolsDownloader", repository=REPOSITORY_DIR)
-    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10)
-    vpn += downloader
-    queue = scheduler(*args, **kwargs)
-    downloader(**dict(browser=browser, queue=queue, delayer=delayer))
-    vpn.start()
-    vpn.join()
+#    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10)
+#    vpn += downloader
+    downloader(*args, browser=browser, scheduler=scheduler, delayer=delayer, **kwargs)
+    downloader.start()
+    downloader.join()
+#    vpn.start()
+#    vpn.join()
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))
-    if bool(vpn.error):
-        traceback.print_exception(*vpn.error)
+#    if bool(vpn.error):
+#        traceback.print_exception(*vpn.error)
     if bool(downloader.error):
-        raise traceback.print_exception(*downloader.error)
+        traceback.print_exception(*downloader.error)
 
 
 if __name__ == "__main__":

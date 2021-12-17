@@ -39,7 +39,7 @@ from webscraping.weburl import WebURL
 from webscraping.webpages import WebContentPage, WebPageContents, RefusalError, CaptchaError, BadRequestError, webpage_bypass
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
-from webscraping.webqueues import WebScheduler, WebQueueable
+from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
 from webscraping.webdownloaders import WebDownloader, CacheMixin
 from webscraping.webdata import WebClickable, WebText, WebTexts, WebCaptcha
 from webscraping.webactions import WebScroll, WebMoveToClick
@@ -131,6 +131,7 @@ class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatsch
         return [address.state, address.city, "{GID}_{name}".format(GID=str(GID), name="-".join(str(name).split(" ")))]
 
 
+class Greatschools_Schools_WebQueue(WebQueue): pass
 class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
 class Greatschools_Schools_WebDataset(WebDataset, fields=["school", "scores", "testing", "demographics", "teachers"]): pass
 
@@ -154,7 +155,10 @@ class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
         return list(dataframe["GID"].to_numpy())
 
     @staticmethod
-    def execute(querys, *args, **kwargs): return [Greatschools_Schools_WebQuery(query, name="GreatSchoolsQuery") for query in querys]
+    def execute(querys, *args, **kwargs):
+        queueables = [Greatschools_Schools_WebQuery(query, name="GreatSchoolsQuery") for query in querys]
+        queue = Greatschools_Schools_WebQueue(queueables, name="GreatSchoolsQueue", *args, **kwargs)
+        return queue
 
 
 class Greatschools_Schools_WebContents(WebPageContents):
@@ -227,10 +231,10 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=Greatschools_Sc
 
 
 class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader):
-    def execute(self, *args, browser, queue, delayer, referer="https://www.google.com", **kwargs):
-        if not bool(queue):
-            return
-        with queue:
+    def execute(self, *args, browser, scheduler, delayer, referer="https://www.google.com", **kwargs):
+        with scheduler(*args, **kwargs) as queue:
+            if not queue:
+                return
             with browser() as driver:
                 page = Greatschools_Schools_WebPage(driver, delayer=delayer)
                 for query in queue:
@@ -266,12 +270,11 @@ def main(*args, **kwargs):
     delayer = Greatschools_Schools_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(30, 60))
     reader = Greatschools_Schools_WebReader(name="GreatSchoolsReader", wait=10)
     browser = Greatschools_Schools_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", file=REPORT_FILE, size=10)
+    scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=5, file=REPORT_FILE)
     downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR)
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10)
     vpn += downloader
-    queue = scheduler(*args, **kwargs)
-    downloader(**dict(browser=browser, reader=reader, queue=queue, delayer=delayer))
+    downloader(*args, browser=browser, reader=reader, scheduler=scheduler, delayer=delayer, **kwargs)
     vpn.start()
     vpn.join()
     for query, results in downloader.results:
