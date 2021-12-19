@@ -33,13 +33,15 @@ from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, WebPageContents, RefusalError, CaptchaError, BadRequestError, PaginationError
+from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin
+from webscraping.webpages import WebData, WebConditions, WebOperations
+from webscraping.webpages import RefusalError, CaptchaError, BadRequestError, PaginationError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
 from webscraping.webdownloaders import WebDownloader, CacheMixin
 from webscraping.webdata import WebClickable, WebText, WebLink, WebClickables, WebBadRequest, WebCaptcha
-from webscraping.webactions import WebMoveToClick, WebClearCaptcha
+from webscraping.webactions import WebMoveToClick
 from webscraping.webvariables import Address
 
 __version__ = "1.0.0"
@@ -159,23 +161,27 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
         return queue
 
 
-class Greatschools_Links_WebContents(WebPageContents):
+class Greatschools_Links_WebData(WebData):
     ZIPCODE = Greatschools_Zipcode
     RESULTS = Greatschools_Results
 
 
-Greatschools_Links_WebContents.BADREQUEST += Greatschools_BadRequest
-Greatschools_Links_WebContents.CAPTCHA += Greatschools_Captcha
-Greatschools_Links_WebContents.ITERATOR += Greatschools_Contents
-Greatschools_Links_WebContents.NEXT += Greatschools_NextPage_MoveToClick
+class Greatschools_Links_WebConditions(WebConditions): pass
+class Greatschools_Links_WebOperations(WebOperations): pass
 
 
-class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage, contents=Greatschools_Links_WebContents):
-    def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebContents.ZIPCODE].data())}
+Greatschools_Links_WebConditions.CAPTCHA += Greatschools_Captcha
+Greatschools_Links_WebConditions.BADREQUEST += Greatschools_BadRequest
+Greatschools_Links_WebOperations.ITERATOR += Greatschools_Contents
+Greatschools_Links_WebOperations.NEXT += Greatschools_NextPage_MoveToClick
+
+
+class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage):
+    def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebData.ZIPCODE].data())}
     def setup(self, *args, **kwargs): pass
 
     def execute(self, *args, **kwargs):
-        if not bool(self[Greatschools_Links_WebContents.RESULTS]):
+        if not bool(self[Greatschools_Links_WebData.RESULTS]):
             return
         query = self.query()
         data = [{"GID": content["link"].data(), "address": content["address"].data(), "link": content["link"].url} for content in iter(self)]
@@ -199,19 +205,19 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                     with query:
                         url = Greatschools_Links_WebURL(**query.todict())
                         while True:
-#                            if not bool(self.vpn):
-#                                self.wait()
-#                            if not bool(driver):
-#                                driver.reset()
+                            if not bool(self.vpn):
+                                self.wait()
+                            if not bool(driver):
+                                driver.reset()
                             try:
                                 page.load(str(url), referer=referer)
                                 page.setup(*args, **kwargs)
                                 for fields, dataset, data in page(*args, **kwargs):
                                     yield Greatschools_Links_WebQuery(fields, name="GreatSchoolsQuery"), Greatschools_Links_WebDataset({dataset: data}, name="GreatSchoolsDataset")
                                 break
-#                            except (RefusalError, CaptchaError):
-#                                driver.trip()
-#                                self.trip()
+                            except (RefusalError, CaptchaError):
+                                driver.trip()
+                                self.trip()
                             except BadRequestError:
                                 break
                             except PaginationError as error:
@@ -223,18 +229,16 @@ def main(*args, **kwargs):
     browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
     scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
     downloader = Greatschools_Links_WebDownloader(name="GreatSchoolsDownloader", repository=REPOSITORY_DIR)
-#    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10)
-#    vpn += downloader
+    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10)
+    vpn += downloader
     downloader(*args, browser=browser, scheduler=scheduler, delayer=delayer, **kwargs)
-    downloader.start()
-    downloader.join()
-#    vpn.start()
-#    vpn.join()
+    vpn.start()
+    vpn.join()
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))
-#    if bool(vpn.error):
-#        traceback.print_exception(*vpn.error)
+    if bool(vpn.error):
+        traceback.print_exception(*vpn.error)
     if bool(downloader.error):
         traceback.print_exception(*downloader.error)
 

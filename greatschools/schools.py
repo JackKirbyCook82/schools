@@ -36,7 +36,9 @@ from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebContentPage, WebPageContents, RefusalError, CaptchaError, BadRequestError, webpage_bypass
+from webscraping.webpages import WebContentPage, webpage_bypass
+from webscraping.webpages import WebData, WebConditions
+from webscraping.webpages import RefusalError, CaptchaError, BadRequestError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
@@ -161,33 +163,48 @@ class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
         return queue
 
 
-class Greatschools_Schools_WebContents(WebPageContents):
+class Greatschools_Schools_WebData(WebData):
     FILTRATION = Greatschools_Filtration
     ADDRESS = Greatschools_Address
     NAME = Greatschools_Name
     TYPE = Greatschools_Type
     GRADES = Greatschools_Grades
-    SCORE_KEYS = Greatschools_ScoreKeys
-    SCORE_VALUES = Greatschools_ScoreValues
-    TEST_KEYS = Greatschools_TestKeys
-    TEST_VALUES = Greatschools_TestValues
-    DEMOGRAPHIC_KEYS = Greatschools_DemographicKeys
-    DEMOGRAPHIC_VALUES = Greatschools_DemographicValues
-    TEACHER_KEYS = Greatschools_TeacherKeys
-    TEACHER_VALUES = Greatschools_TeacherValues
 
 
-Greatschools_Schools_WebContents.CAPTCHA += Greatschools_Captcha
+class Greatschools_Schools_WebScore(WebData):
+    KEYS = Greatschools_ScoreKeys
+    VALUES = Greatschools_ScoreValues
 
 
-class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=Greatschools_Schools_WebContents):
+class Greatschools_Schools_WebTest(WebData):
+    KEYS = Greatschools_TestKeys
+    VALUES = Greatschools_TestValues
+
+
+class Greatschools_Schools_WebDemographic(WebData):
+    KEYS = Greatschools_DemographicKeys
+    VALUES = Greatschools_DemographicValues
+
+
+class Greatschools_Schools_WebTeacher(WebData):
+    KEYS = Greatschools_TeacherKeys
+    VALUES = Greatschools_TeacherValues
+
+
+class Greatschools_Schools_WebConditions(WebConditions): pass
+
+
+Greatschools_Schools_WebConditions.CAPTCHA += Greatschools_Captcha
+
+
+class Greatschools_Schools_WebPage(WebContentPage, ABC):
     def query(self): return {"GID": str(identity_parser(self.url))}
 
     def setup(self, *args, **kwargs):
         if hasattr(self, "driver"):
             Greatschools_Scroll(self.driver)(*args, commands={"pagedown": 20}, **kwargs)
             more = Greatschools_TeacherMore_MoveToClick(self.driver)
-            if bool(bool(more)):
+            if bool(more):
                 more(*args, **kwargs)
 
     def execute(self, *args, **kwargs):
@@ -199,33 +216,38 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=Greatschools_Sc
         yield query, "teachers", self.teachers()
 
     def school(self):
-        school = {"address": self[Greatschools_Schools_WebContents.ADDRESS].data(),
-                  "name": self[Greatschools_Schools_WebContents.NAME].data(),
-                  "type": self[Greatschools_Schools_WebContents.TYPE].data(),
-                  "grade": self[Greatschools_Schools_WebContents.GRADES].data()}
+        school = {}
+        if bool(self[Greatschools_Schools_WebData.ADDRESS]):
+            school["type"] = str(self[Greatschools_Schools_WebData.ADDRESS].data())
+        if bool(self[Greatschools_Schools_WebData.NAME]):
+            school["price"] = str(self[Greatschools_Schools_WebData.NAME].data())
+        if bool(self[Greatschools_Schools_WebData.TYPE]):
+            school["space"] = str(self[Greatschools_Schools_WebData.TYPE].data())
+        if bool(self[Greatschools_Schools_WebData.GRADES]):
+            school["community"] = str(self[Greatschools_Schools_WebData.GRADES].data())
         return {**self.query(), **school}
 
-    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebContents.SCORE_KEYS]), value=None)
+    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebScore.KEYS]), value=None)
     def scores(self):
-        items = zip(iter(self[Greatschools_Schools_WebContents.SCORE_KEYS]), iter(self[Greatschools_Schools_WebContents.SCORE_VALUES]))
+        items = zip(iter(self[Greatschools_Schools_WebScore.SCORE_KEYS]), iter(self[Greatschools_Schools_WebScore.VALUES]))
         scores = {key.data(): value.data() for key, value in items}
         return {**self.query(), **scores}
 
-    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebContents.TEST_KEYS]), value=None)
+    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebTest.KEYS]), value=None)
     def testing(self):
-        items = zip(iter(self[Greatschools_Schools_WebContents.TEST_KEYS]), iter(self[Greatschools_Schools_WebContents.TEST_VALUES]))
+        items = zip(iter(self[Greatschools_Schools_WebTest.KEYS]), iter(self[Greatschools_Schools_WebTest.VALUES]))
         testing = {key.data(): value.data() for key, value in items}
         return {**self.query(), **testing}
 
-    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebContents.DEMOGRAPHIC_KEYS]), value=None)
+    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebDemographic.KEYS]), value=None)
     def demographics(self):
-        items = zip(iter(self[Greatschools_Schools_WebContents.DEMOGRAPHIC_KEYS]), iter(self[Greatschools_Schools_WebContents.DEMOGRAPHIC_VALUES]))
+        items = zip(iter(self[Greatschools_Schools_WebDemographic.KEYS]), iter(self[Greatschools_Schools_WebDemographic.VALUES]))
         demographics = {key.data(): value.data() for key, value in items}
         return {**self.query(), **demographics}
 
-    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebContents.TEACHER_KEYS]), value=None)
+    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebTeacher.KEYS]), value=None)
     def teachers(self):
-        items = zip(iter(self[Greatschools_Schools_WebContents.TEACHER_KEYS]), iter(self[Greatschools_Schools_WebContents.TEACHER_VALUES]))
+        items = zip(iter(self[Greatschools_Schools_WebTeacher.KEYS]), iter(self[Greatschools_Schools_WebTeacher.VALUES]))
         demographics = {key.data(): value.data() for key, value in items}
         return {**self.query(), **demographics}
 
