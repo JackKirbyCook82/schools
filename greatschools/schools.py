@@ -37,7 +37,7 @@ from webscraping.webdrivers import WebBrowser
 from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebContentPage, webpage_bypass
-from webscraping.webpages import WebData, WebConditions
+from webscraping.webpages import WebData, WebActions, WebConditions
 from webscraping.webpages import RefusalError, CaptchaError, BadRequestError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
@@ -171,6 +171,10 @@ class Greatschools_Schools_WebData(WebData):
     GRADES = Greatschools_Grades
 
 
+class Greatschools_Schools_WebActions(WebActions):
+    SCROLL = Greatschools_Scroll
+
+
 class Greatschools_Schools_WebScore(WebData):
     KEYS = Greatschools_ScoreKeys
     VALUES = Greatschools_ScoreValues
@@ -191,10 +195,8 @@ class Greatschools_Schools_WebTeacher(WebData):
     VALUES = Greatschools_TeacherValues
 
 
-class Greatschools_Schools_WebConditions(WebConditions): pass
-
-
-Greatschools_Schools_WebConditions.CAPTCHA += Greatschools_Captcha
+class Greatschools_Schools_WebConditions(WebConditions):
+    CAPTCHA = Greatschools_Captcha
 
 
 class Greatschools_Schools_WebPage(WebContentPage, ABC):
