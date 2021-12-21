@@ -161,27 +161,27 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
         return queue
 
 
-class Greatschools_Links_WebData(WebData):
+class Greatschools_WebData(WebData):
     ZIPCODE = Greatschools_Zipcode
     RESULTS = Greatschools_Results
 
 
-class Greatschools_Links_WebConditions(WebConditions): pass
-class Greatschools_Links_WebOperations(WebOperations): pass
+class Greatschools_WebConditions(WebConditions): pass
+class Greatschools_WebOperations(WebOperations): pass
 
 
-Greatschools_Links_WebConditions.CAPTCHA += Greatschools_Captcha
-Greatschools_Links_WebConditions.BADREQUEST += Greatschools_BadRequest
-Greatschools_Links_WebOperations.ITERATOR += Greatschools_Contents
-Greatschools_Links_WebOperations.NEXT += Greatschools_NextPage_MoveToClick
+Greatschools_WebConditions.CAPTCHA += Greatschools_Captcha
+Greatschools_WebConditions.BADREQUEST += Greatschools_BadRequest
+Greatschools_WebOperations.ITERATOR += Greatschools_Contents
+Greatschools_WebOperations.NEXT += Greatschools_NextPage_MoveToClick
 
 
-class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage):
-    def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_Links_WebData.ZIPCODE].data())}
+class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage, data=Greatschools_WebData, conditions=Greatschools_WebConditions, operations=Greatschools_WebOperations):
+    def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_WebData.ZIPCODE].data())}
     def setup(self, *args, **kwargs): pass
 
     def execute(self, *args, **kwargs):
-        if not bool(self[Greatschools_Links_WebData.RESULTS]):
+        if not bool(self[Greatschools_WebData.RESULTS]):
             return
         query = self.query()
         data = [{"GID": content["link"].data(), "address": content["address"].data(), "link": content["link"].url} for content in iter(self)]

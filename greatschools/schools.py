@@ -163,7 +163,7 @@ class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
         return queue
 
 
-class Greatschools_Schools_WebData(WebData):
+class Greatschools_WebData(WebData):
     FILTRATION = Greatschools_Filtration
     ADDRESS = Greatschools_Address
     NAME = Greatschools_Name
@@ -171,43 +171,49 @@ class Greatschools_Schools_WebData(WebData):
     GRADES = Greatschools_Grades
 
 
-class Greatschools_Schools_WebActions(WebActions):
-    SCROLL = Greatschools_Scroll
-
-
-class Greatschools_Schools_WebScore(WebData):
+class Greatschools_WebScore(WebData):
     KEYS = Greatschools_ScoreKeys
     VALUES = Greatschools_ScoreValues
 
 
-class Greatschools_Schools_WebTest(WebData):
+class Greatschools_WebTest(WebData):
     KEYS = Greatschools_TestKeys
     VALUES = Greatschools_TestValues
 
 
-class Greatschools_Schools_WebDemographic(WebData):
+class Greatschools_WebDemographic(WebData):
     KEYS = Greatschools_DemographicKeys
     VALUES = Greatschools_DemographicValues
 
 
-class Greatschools_Schools_WebTeacher(WebData):
+class Greatschools_WebTeacher(WebData):
     KEYS = Greatschools_TeacherKeys
     VALUES = Greatschools_TeacherValues
 
 
-class Greatschools_Schools_WebConditions(WebConditions):
+class Greatschools_WebConditions(WebConditions):
     CAPTCHA = Greatschools_Captcha
 
 
-class Greatschools_Schools_WebPage(WebContentPage, ABC):
+class Greatschools_WebActions(WebActions):
+    SCROLL = Greatschools_Scroll
+    OPEN = Greatschools_TeacherMore_MoveToClick
+
+
+data = [Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher]
+actions = [Greatschools_WebActions]
+conditions = [Greatschools_WebConditions]
+
+
+class Greatschools_Schools_WebPage(WebContentPage, ABC, data=data, actions=actions, conditions=conditions):
     def query(self): return {"GID": str(identity_parser(self.url))}
 
-    def setup(self, *args, **kwargs):
-        if hasattr(self, "driver"):
-            Greatschools_Scroll(self.driver)(*args, commands={"pagedown": 20}, **kwargs)
-            more = Greatschools_TeacherMore_MoveToClick(self.driver)
-            if bool(more):
-                more(*args, **kwargs)
+#    def setup(self, *args, **kwargs):
+#        if hasattr(self, "driver"):
+#            Greatschools_Scroll(self.driver)(*args, commands={"pagedown": 20}, **kwargs)
+#            more = Greatschools_TeacherMore_MoveToClick(self.driver)
+#            if bool(more):
+#                more(*args, **kwargs)
 
     def execute(self, *args, **kwargs):
         query = self.query()
@@ -219,37 +225,37 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC):
 
     def school(self):
         school = {}
-        if bool(self[Greatschools_Schools_WebData.ADDRESS]):
-            school["type"] = str(self[Greatschools_Schools_WebData.ADDRESS].data())
-        if bool(self[Greatschools_Schools_WebData.NAME]):
-            school["price"] = str(self[Greatschools_Schools_WebData.NAME].data())
-        if bool(self[Greatschools_Schools_WebData.TYPE]):
-            school["space"] = str(self[Greatschools_Schools_WebData.TYPE].data())
-        if bool(self[Greatschools_Schools_WebData.GRADES]):
-            school["community"] = str(self[Greatschools_Schools_WebData.GRADES].data())
+        if bool(self[Greatschools_WebData.ADDRESS]):
+            school["type"] = str(self[Greatschools_WebData.ADDRESS].data())
+        if bool(self[Greatschools_WebData.NAME]):
+            school["price"] = str(self[Greatschools_WebData.NAME].data())
+        if bool(self[Greatschools_WebData.TYPE]):
+            school["space"] = str(self[Greatschools_WebData.TYPE].data())
+        if bool(self[Greatschools_WebData.GRADES]):
+            school["community"] = str(self[Greatschools_WebData.GRADES].data())
         return {**self.query(), **school}
 
-    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebScore.KEYS]), value=None)
+    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebScore.KEYS]), value=None)
     def scores(self):
-        items = zip(iter(self[Greatschools_Schools_WebScore.SCORE_KEYS]), iter(self[Greatschools_Schools_WebScore.VALUES]))
+        items = zip(iter(self[Greatschools_WebScore.SCORE_KEYS]), iter(self[Greatschools_WebScore.VALUES]))
         scores = {key.data(): value.data() for key, value in items}
         return {**self.query(), **scores}
 
-    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebTest.KEYS]), value=None)
+    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebTest.KEYS]), value=None)
     def testing(self):
-        items = zip(iter(self[Greatschools_Schools_WebTest.KEYS]), iter(self[Greatschools_Schools_WebTest.VALUES]))
+        items = zip(iter(self[Greatschools_WebTest.KEYS]), iter(self[Greatschools_WebTest.VALUES]))
         testing = {key.data(): value.data() for key, value in items}
         return {**self.query(), **testing}
 
-    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebDemographic.KEYS]), value=None)
+    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebDemographic.KEYS]), value=None)
     def demographics(self):
-        items = zip(iter(self[Greatschools_Schools_WebDemographic.KEYS]), iter(self[Greatschools_Schools_WebDemographic.VALUES]))
+        items = zip(iter(self[Greatschools_WebDemographic.KEYS]), iter(self[Greatschools_WebDemographic.VALUES]))
         demographics = {key.data(): value.data() for key, value in items}
         return {**self.query(), **demographics}
 
-    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_Schools_WebTeacher.KEYS]), value=None)
+    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebTeacher.KEYS]), value=None)
     def teachers(self):
-        items = zip(iter(self[Greatschools_Schools_WebTeacher.KEYS]), iter(self[Greatschools_Schools_WebTeacher.VALUES]))
+        items = zip(iter(self[Greatschools_WebTeacher.KEYS]), iter(self[Greatschools_WebTeacher.VALUES]))
         demographics = {key.data(): value.data() for key, value in items}
         return {**self.query(), **demographics}
 
