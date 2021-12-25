@@ -200,20 +200,20 @@ class Greatschools_WebActions(WebActions):
     OPEN = Greatschools_TeacherMore_MoveToClick
 
 
-data = [Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher]
-actions = [Greatschools_WebActions]
-conditions = [Greatschools_WebConditions]
+contents = {"data": [Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher],
+            "actions": [Greatschools_WebActions],
+            "conditions": [Greatschools_WebConditions]}
 
 
-class Greatschools_Schools_WebPage(WebContentPage, ABC, data=data, actions=actions, conditions=conditions):
+class Greatschools_Schools_WebPage(WebContentPage, ABC, **contents):
     def query(self): return {"GID": str(identity_parser(self.url))}
 
-#    def setup(self, *args, **kwargs):
-#        if hasattr(self, "driver"):
-#            Greatschools_Scroll(self.driver)(*args, commands={"pagedown": 20}, **kwargs)
-#            more = Greatschools_TeacherMore_MoveToClick(self.driver)
-#            if bool(more):
-#                more(*args, **kwargs)
+    def setup(self, *args, **kwargs):
+        if not hasattr(self, "driver"):
+            return
+        self[Greatschools_WebActions.SCROLL](*args, commands={"pagedown": 20}, **kwargs)
+        if bool(self[Greatschools_WebActions.OPEN]):
+            self[Greatschools_WebActions.OPEN](*args, **kwargs)
 
     def execute(self, *args, **kwargs):
         query = self.query()
@@ -237,7 +237,7 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC, data=data, actions=actio
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebScore.KEYS]), value=None)
     def scores(self):
-        items = zip(iter(self[Greatschools_WebScore.SCORE_KEYS]), iter(self[Greatschools_WebScore.VALUES]))
+        items = zip(iter(self[Greatschools_WebScore.KEYS]), iter(self[Greatschools_WebScore.VALUES]))
         scores = {key.data(): value.data() for key, value in items}
         return {**self.query(), **scores}
 

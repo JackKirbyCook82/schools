@@ -166,14 +166,14 @@ class Greatschools_WebData(WebData):
     RESULTS = Greatschools_Results
 
 
-class Greatschools_WebConditions(WebConditions): pass
-class Greatschools_WebOperations(WebOperations): pass
+class Greatschools_WebConditions(WebConditions):
+    CAPTCHA = Greatschools_Captcha
+    BADREQUEST = Greatschools_BadRequest
 
 
-Greatschools_WebConditions.CAPTCHA += Greatschools_Captcha
-Greatschools_WebConditions.BADREQUEST += Greatschools_BadRequest
-Greatschools_WebOperations.ITERATOR += Greatschools_Contents
-Greatschools_WebOperations.NEXT += Greatschools_NextPage_MoveToClick
+class Greatschools_WebOperations(WebOperations):
+    ITERATOR = Greatschools_Contents
+    NEXT = Greatschools_NextPage_MoveToClick
 
 
 class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage, data=Greatschools_WebData, conditions=Greatschools_WebConditions, operations=Greatschools_WebOperations):
