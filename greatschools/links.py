@@ -202,26 +202,32 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
             with browser() as driver:
                 page = Greatschools_Links_WebPage(driver, name="GreatSchoolsPage", delayer=delayer)
                 for query in queue:
-                    with query:
-                        url = Greatschools_Links_WebURL(**query.todict())
-                        while True:
-                            if not bool(self.vpn):
-                                self.wait()
-                            if not bool(driver):
-                                driver.reset()
-                            try:
-                                page.load(str(url), referer=referer)
-                                page.setup(*args, **kwargs)
-                                for fields, dataset, data in page(*args, **kwargs):
-                                    yield Greatschools_Links_WebQuery(fields, name="GreatSchoolsQuery"), Greatschools_Links_WebDataset({dataset: data}, name="GreatSchoolsDataset")
-                                break
-                            except (RefusalError, CaptchaError):
-                                driver.trip()
-                                self.trip()
-                            except BadRequestError:
-                                break
-                            except PaginationError as error:
-                                raise error
+                    url = Greatschools_Links_WebURL(**query.todict())
+                    while True:
+                        if not bool(self.vpn):
+                            self.wait()
+                        if not bool(driver):
+                            driver.reset()
+                        try:
+                            page.load(str(url), referer=referer)
+                            page.setup(*args, **kwargs)
+                            for fields, dataset, data in page(*args, **kwargs):
+                                yield Greatschools_Links_WebQuery(fields, name="GreatSchoolsQuery"), Greatschools_Links_WebDataset({dataset: data}, name="GreatSchoolsDataset")
+                        except (RefusalError, CaptchaError):
+                            driver.trip()
+                            self.trip()
+                        except BadRequestError:
+                            query.success()
+                            break
+                        except PaginationError as error:
+                            query.failure()
+                            raise error
+                        except BaseException as error:
+                            query.error()
+                            raise error
+                        else:
+                            query.success()
+                            break
 
 
 def main(*args, **kwargs):

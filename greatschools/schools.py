@@ -226,13 +226,13 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC, **contents):
     def school(self):
         school = {}
         if bool(self[Greatschools_WebData.ADDRESS]):
-            school["type"] = str(self[Greatschools_WebData.ADDRESS].data())
+            school["address"] = str(self[Greatschools_WebData.ADDRESS].data())
         if bool(self[Greatschools_WebData.NAME]):
-            school["price"] = str(self[Greatschools_WebData.NAME].data())
+            school["name"] = str(self[Greatschools_WebData.NAME].data())
         if bool(self[Greatschools_WebData.TYPE]):
-            school["space"] = str(self[Greatschools_WebData.TYPE].data())
+            school["type"] = str(self[Greatschools_WebData.TYPE].data())
         if bool(self[Greatschools_WebData.GRADES]):
-            school["community"] = str(self[Greatschools_WebData.GRADES].data())
+            school["grades"] = str(self[Greatschools_WebData.GRADES].data())
         return {**self.query(), **school}
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebScore.KEYS]), value=None)
@@ -272,19 +272,24 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloade
                         self.wait()
                     if not bool(driver):
                         driver.reset()
-                    with query:
-                        url = self.url(**query.todict())
-                        url = Greatschools_Schools_WebURL.fromstr(str(url))
-                        try:
-                            page.load(str(url), referer=referer)
-                            page.setup(*args, **kwargs)
-                            for fields, dataset, data in page(*args, **kwargs):
-                                yield Greatschools_Schools_WebQuery(fields), Greatschools_Schools_WebDataset({dataset: data})
-                        except (RefusalError, CaptchaError):
-                            driver.trip()
-                            self.trip()
-                        except BadRequestError:
-                            pass
+                    url = self.url(**query.todict())
+                    url = Greatschools_Schools_WebURL.fromstr(str(url))
+                    try:
+                        page.load(str(url), referer=referer)
+                        page.setup(*args, **kwargs)
+                        for fields, dataset, data in page(*args, **kwargs):
+                            yield Greatschools_Schools_WebQuery(fields), Greatschools_Schools_WebDataset({dataset: data})
+                    except (RefusalError, CaptchaError):
+                        driver.trip()
+                        self.trip()
+                        query.abandon()
+                    except BadRequestError:
+                        query.success()
+                    except BaseException as error:
+                        query.error()
+                        raise error
+                    else:
+                        query.success()
 
     @staticmethod
     def url(*args, GID, **kwargs):
