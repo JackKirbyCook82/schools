@@ -135,13 +135,16 @@ class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatsch
 
 class Greatschools_Schools_WebQueue(WebQueue): pass
 class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Schools_WebDataset(WebDataset, fields=["school", "scores", "testing", "demographics", "teachers"]): pass
+class Greatschools_Schools_WebDataset(WebDataset, fields=["schools", "scores", "testing", "demographics", "teachers"]): pass
 
 
 class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
     @staticmethod
     def GID(*args, state, city=None, citys=[], zipcode=None, zipcodes=[], **kwargs):
-        dataframe = load(QUEUE_FILE)
+        try:
+            dataframe = load(QUEUE_FILE)
+        except FileNotFoundError:
+            return []
         assert all([isinstance(item, (str, type(None))) for item in (zipcode, city)])
         assert all([isinstance(item, list) for item in (zipcodes, citys)])
         zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
@@ -159,7 +162,7 @@ class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
     @staticmethod
     def execute(querys, *args, **kwargs):
         queueables = [Greatschools_Schools_WebQuery(query, name="GreatSchoolsQuery") for query in querys]
-        queue = Greatschools_Schools_WebQueue(queueables, name="GreatSchoolsQueue", *args, **kwargs)
+        queue = Greatschools_Schools_WebQueue(queueables, *args, name="GreatSchoolsQueue", **kwargs)
         return queue
 
 
@@ -191,21 +194,19 @@ class Greatschools_WebTeacher(WebData):
     VALUES = Greatschools_TeacherValues
 
 
-class Greatschools_WebConditions(WebConditions):
-    CAPTCHA = Greatschools_Captcha
-
-
 class Greatschools_WebActions(WebActions):
     SCROLL = Greatschools_Scroll
     OPEN = Greatschools_TeacherMore_MoveToClick
 
 
-contents = {"data": [Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher],
-            "actions": [Greatschools_WebActions],
-            "conditions": [Greatschools_WebConditions]}
+class Greatschools_WebConditions(WebConditions):
+    CAPTCHA = Greatschools_Captcha
 
 
-class Greatschools_Schools_WebPage(WebContentPage, ABC, **contents):
+contents = [Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher, Greatschools_WebActions, Greatschools_WebConditions]
+
+
+class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=contents):
     def query(self): return {"GID": str(identity_parser(self.url))}
 
     def setup(self, *args, **kwargs):
@@ -217,23 +218,23 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC, **contents):
 
     def execute(self, *args, **kwargs):
         query = self.query()
-        yield query, "school", self.school()
+        yield query, "schools", self.schools()
         yield query, "scores", self.scores()
         yield query, "testing", self.testing()
         yield query, "demographics", self.demographics()
         yield query, "teachers", self.teachers()
 
-    def school(self):
-        school = {}
+    def schools(self):
+        schools = {}
         if bool(self[Greatschools_WebData.ADDRESS]):
-            school["address"] = str(self[Greatschools_WebData.ADDRESS].data())
+            schools["address"] = str(self[Greatschools_WebData.ADDRESS].data())
         if bool(self[Greatschools_WebData.NAME]):
-            school["name"] = str(self[Greatschools_WebData.NAME].data())
+            schools["name"] = str(self[Greatschools_WebData.NAME].data())
         if bool(self[Greatschools_WebData.TYPE]):
-            school["type"] = str(self[Greatschools_WebData.TYPE].data())
+            schools["type"] = str(self[Greatschools_WebData.TYPE].data())
         if bool(self[Greatschools_WebData.GRADES]):
-            school["grades"] = str(self[Greatschools_WebData.GRADES].data())
-        return {**self.query(), **school}
+            schools["grades"] = str(self[Greatschools_WebData.GRADES].data())
+        return {**self.query(), **schools}
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebScore.KEYS]), value=None)
     def scores(self):
@@ -278,7 +279,7 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloade
                         page.load(str(url), referer=referer)
                         page.setup(*args, **kwargs)
                         for fields, dataset, data in page(*args, **kwargs):
-                            yield Greatschools_Schools_WebQuery(fields), Greatschools_Schools_WebDataset({dataset: data})
+                            yield Greatschools_Schools_WebQuery(fields, name="GreatschoolsQuery"), Greatschools_Schools_WebDataset({dataset: data}, name="GreatschoolsDataset")
                     except (RefusalError, CaptchaError):
                         driver.trip()
                         self.trip()
@@ -305,7 +306,7 @@ def main(*args, **kwargs):
     delayer = Greatschools_Schools_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(30, 60))
     reader = Greatschools_Schools_WebReader(name="GreatSchoolsReader", wait=10)
     browser = Greatschools_Schools_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=5, file=REPORT_FILE)
+    scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
     downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR)
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10)
     vpn += downloader

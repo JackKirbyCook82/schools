@@ -176,7 +176,7 @@ class Greatschools_WebOperations(WebOperations):
     NEXT = Greatschools_NextPage_MoveToClick
 
 
-class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage, data=Greatschools_WebData, conditions=Greatschools_WebConditions, operations=Greatschools_WebOperations):
+class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage, contents=[Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations]):
     def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_WebData.ZIPCODE].data())}
     def setup(self, *args, **kwargs): pass
 
@@ -203,19 +203,21 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                 page = Greatschools_Links_WebPage(driver, name="GreatSchoolsPage", delayer=delayer)
                 for query in queue:
                     url = Greatschools_Links_WebURL(**query.todict())
+                    reload = False
                     while True:
                         if not bool(self.vpn):
                             self.wait()
                         if not bool(driver):
                             driver.reset()
                         try:
-                            page.load(str(url), referer=referer)
+                            page.reload(referer=referer) if reload else page.load(str(url), referer=referer)
                             page.setup(*args, **kwargs)
                             for fields, dataset, data in page(*args, **kwargs):
                                 yield Greatschools_Links_WebQuery(fields, name="GreatSchoolsQuery"), Greatschools_Links_WebDataset({dataset: data}, name="GreatSchoolsDataset")
                         except (RefusalError, CaptchaError):
                             driver.trip()
                             self.trip()
+                            reload = True
                         except BadRequestError:
                             query.success()
                             break
