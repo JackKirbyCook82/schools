@@ -265,7 +265,7 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloade
     def execute(self, *args, browser, scheduler, delayer, referer="https://www.google.com", **kwargs):
         with scheduler(*args, **kwargs) as queue:
             if not queue:
-                return
+                self.delay()
             with browser() as driver:
                 page = Greatschools_Schools_WebPage(driver, delayer=delayer)
                 for query in queue:
@@ -307,7 +307,7 @@ def main(*args, **kwargs):
     reader = Greatschools_Schools_WebReader(name="GreatSchoolsReader", wait=10)
     browser = Greatschools_Schools_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
     scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
-    downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR)
+    downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, wait=10*60)
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10)
     vpn += downloader
     downloader(*args, browser=browser, reader=reader, scheduler=scheduler, delayer=delayer, **kwargs)
