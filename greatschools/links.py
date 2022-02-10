@@ -14,15 +14,15 @@ import traceback
 import regex as re
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
-MOD_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
-ROOT_DIR = os.path.abspath(os.path.join(MOD_DIR, os.pardir))
-SAVE_DIR = os.path.join(ROOT_DIR, "save")
+MODULE_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
+ROOT_DIR = os.path.abspath(os.path.join(MODULE_DIR, os.pardir))
 RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
+SAVE_DIR = os.path.join(ROOT_DIR, "save")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
+REPORT_FILE = os.path.join(REPOSITORY_DIR, "links.csv")
+QUEUE_FILE = os.path.join(RESOURCE_DIR, "zipcodes.zip.csv")
 DRIVER_EXE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
 NORDVPN_EXE = os.path.join("C:/", "Program Files", "NordVPN", "NordVPN.exe")
-QUEUE_FILE = os.path.join(RESOURCE_DIR, "zipcodes.zip.csv")
-REPORT_FILE = os.path.join(REPOSITORY_DIR, "links.csv")
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
@@ -33,7 +33,7 @@ from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin
+from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, GeneratorMixin
 from webscraping.webpages import WebData, WebConditions, WebOperations
 from webscraping.webpages import RefusalError, CaptchaError, BadRequestError, PaginationError
 from webscraping.webloaders import WebLoader
@@ -176,7 +176,7 @@ class Greatschools_WebOperations(WebOperations):
     NEXT = Greatschools_NextPage_MoveToClick
 
 
-class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, WebBrowserPage, contents=[Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations]):
+class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, GeneratorMixin, WebBrowserPage, contents=[Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations]):
     def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_WebData.ZIPCODE].data())}
     def setup(self, *args, **kwargs): pass
 
@@ -236,8 +236,8 @@ def main(*args, **kwargs):
     delayer = Greatschools_Links_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(10, 20))
     browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
     scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
-    downloader = Greatschools_Links_WebDownloader(name="GreatSchoolsDownloader", repository=REPOSITORY_DIR)
-    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10)
+    downloader = Greatschools_Links_WebDownloader(name="GreatSchoolsDownloader", repository=REPOSITORY_DIR, timeout=60*3)
+    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10, timeout=60*3)
     vpn += downloader
     downloader(*args, browser=browser, scheduler=scheduler, delayer=delayer, **kwargs)
     vpn.start()

@@ -15,16 +15,16 @@ import regex as re
 from abc import ABC
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
-MOD_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
-ROOT_DIR = os.path.abspath(os.path.join(MOD_DIR, os.pardir))
-SAVE_DIR = os.path.join(ROOT_DIR, "save")
+MODULE_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
+ROOT_DIR = os.path.abspath(os.path.join(MODULE_DIR, os.pardir))
 RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
+SAVE_DIR = os.path.join(ROOT_DIR, "save")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
+REPORT_FILE = os.path.join(REPOSITORY_DIR, "schools.csv")
+QUEUE_FILE = os.path.join(REPOSITORY_DIR, "links.zip.csv")
 USERAGENTS_FILE = os.path.join(RESOURCE_DIR, "useragents.zip.jl")
 DRIVER_EXE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
 NORDVPN_EXE = os.path.join("C:/", "Program Files", "NordVPN", "NordVPN.exe")
-QUEUE_FILE = os.path.join(REPOSITORY_DIR, "links.zip.csv")
-REPORT_FILE = os.path.join(REPOSITORY_DIR, "schools.csv")
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
@@ -36,13 +36,13 @@ from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebContentPage, webpage_bypass
+from webscraping.webpages import WebContentPage, GeneratorMixin, webpage_bypass
 from webscraping.webpages import WebData, WebActions, WebConditions
 from webscraping.webpages import RefusalError, CaptchaError, BadRequestError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
-from webscraping.webdownloaders import WebDownloader, CacheMixin
+from webscraping.webdownloaders import WebDownloader, CacheMixin, DelayMixin
 from webscraping.webdata import WebClickable, WebText, WebTexts, WebCaptcha
 from webscraping.webactions import WebScroll, WebMoveToClick
 from webscraping.webvariables import Address, Price
@@ -206,7 +206,7 @@ class Greatschools_WebConditions(WebConditions):
 contents = [Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher, Greatschools_WebActions, Greatschools_WebConditions]
 
 
-class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=contents):
+class Greatschools_Schools_WebPage(GeneratorMixin, WebContentPage, ABC, contents=contents):
     def query(self): return {"GID": str(identity_parser(self.url))}
 
     def setup(self, *args, **kwargs):
@@ -261,7 +261,7 @@ class Greatschools_Schools_WebPage(WebContentPage, ABC, contents=contents):
         return {**self.query(), **demographics}
 
 
-class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader):
+class Greatschools_Schools_WebDownloader(DelayMixin, CacheMixin, WebVPNProcess, WebDownloader):
     def execute(self, *args, browser, scheduler, delayer, referer="https://www.google.com", **kwargs):
         with scheduler(*args, **kwargs) as queue:
             if not queue:
@@ -307,8 +307,8 @@ def main(*args, **kwargs):
     reader = Greatschools_Schools_WebReader(name="GreatSchoolsReader", wait=10)
     browser = Greatschools_Schools_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
     scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
-    downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, wait=10*60)
-    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10)
+    downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*3, delay=None)
+    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10, timeout=60*3)
     vpn += downloader
     downloader(*args, browser=browser, reader=reader, scheduler=scheduler, delayer=delayer, **kwargs)
     vpn.start()
