@@ -201,43 +201,44 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                 return
             with browser() as driver:
                 page = Greatschools_Links_WebPage(driver, name="GreatSchoolsPage", delayer=delayer)
-                for query in queue:
-                    url = Greatschools_Links_WebURL(**query.todict())
-                    reload = False
-                    while True:
-                        if not bool(self.vpn):
-                            self.wait()
-                        if not bool(driver):
-                            driver.reset()
-                        try:
-                            page.reload(referer=referer) if reload else page.load(str(url), referer=referer)
-                            page.setup(*args, **kwargs)
-                            for fields, dataset, data in page(*args, **kwargs):
-                                yield Greatschools_Links_WebQuery(fields, name="GreatSchoolsQuery"), Greatschools_Links_WebDataset({dataset: data}, name="GreatSchoolsDataset")
-                        except (RefusalError, CaptchaError):
-                            driver.trip()
-                            self.trip()
-                            reload = True
-                        except BadRequestError:
-                            query.success()
-                            break
-                        except PaginationError as error:
-                            query.failure()
-                            raise error
-                        except BaseException as error:
-                            query.error()
-                            raise error
-                        else:
-                            query.success()
-                            break
+                with queue:
+                    for query in queue:
+                        url = Greatschools_Links_WebURL(**query.todict())
+                        reload = False
+                        while True:
+                            if not bool(self.vpn):
+                                self.wait()
+                            if not bool(driver):
+                                driver.reset()
+                            try:
+                                page.reload(referer=referer) if reload else page.load(str(url), referer=referer)
+                                page.setup(*args, **kwargs)
+                                for fields, dataset, data in page(*args, **kwargs):
+                                    yield Greatschools_Links_WebQuery(fields, name="GreatSchoolsQuery"), Greatschools_Links_WebDataset({dataset: data}, name="GreatSchoolsDataset")
+                            except (RefusalError, CaptchaError):
+                                driver.trip()
+                                self.trip()
+                                reload = True
+                            except BadRequestError:
+                                query.success()
+                                break
+                            except PaginationError as error:
+                                query.failure()
+                                raise error
+                            except BaseException as error:
+                                query.error()
+                                raise error
+                            else:
+                                query.success()
+                                break
 
 
 def main(*args, **kwargs):
     delayer = Greatschools_Links_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(10, 20))
     browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
     scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
-    downloader = Greatschools_Links_WebDownloader(name="GreatSchoolsDownloader", repository=REPOSITORY_DIR, timeout=60*3)
-    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10, timeout=60*3)
+    downloader = Greatschools_Links_WebDownloader(name="GreatSchoolsDownloader", repository=REPOSITORY_DIR, timeout=60*2)
+    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10, timeout=60*2)
     vpn += downloader
     downloader(*args, browser=browser, scheduler=scheduler, delayer=delayer, **kwargs)
     vpn.start()

@@ -267,30 +267,31 @@ class Greatschools_Schools_WebDownloader(DelayMixin, CacheMixin, WebVPNProcess, 
             if not queue:
                 self.delay()
             with browser() as driver:
-                page = Greatschools_Schools_WebPage(driver, delayer=delayer)
-                for query in queue:
-                    if not bool(self.vpn):
-                        self.wait()
-                    if not bool(driver):
-                        driver.reset()
-                    url = self.url(**query.todict())
-                    url = Greatschools_Schools_WebURL.fromstr(str(url))
-                    try:
-                        page.load(str(url), referer=referer)
-                        page.setup(*args, **kwargs)
-                        for fields, dataset, data in page(*args, **kwargs):
-                            yield Greatschools_Schools_WebQuery(fields, name="GreatschoolsQuery"), Greatschools_Schools_WebDataset({dataset: data}, name="GreatschoolsDataset")
-                    except (RefusalError, CaptchaError):
-                        driver.trip()
-                        self.trip()
-                        query.abandon()
-                    except BadRequestError:
-                        query.success()
-                    except BaseException as error:
-                        query.error()
-                        raise error
-                    else:
-                        query.success()
+                page = Greatschools_Schools_WebPage(driver, name="GreatSchoolsPage", delayer=delayer)
+                with queue:
+                    for query in queue:
+                        if not bool(self.vpn):
+                            self.wait()
+                        if not bool(driver):
+                            driver.reset()
+                        url = self.url(**query.todict())
+                        url = Greatschools_Schools_WebURL.fromstr(str(url))
+                        try:
+                            page.load(str(url), referer=referer)
+                            page.setup(*args, **kwargs)
+                            for fields, dataset, data in page(*args, **kwargs):
+                                yield Greatschools_Schools_WebQuery(fields, name="GreatschoolsQuery"), Greatschools_Schools_WebDataset({dataset: data}, name="GreatschoolsDataset")
+                        except (RefusalError, CaptchaError):
+                            driver.trip()
+                            self.trip()
+                            query.abandon()
+                        except BadRequestError:
+                            query.success()
+                        except BaseException as error:
+                            query.error()
+                            raise error
+                        else:
+                            query.success()
 
     @staticmethod
     def url(*args, GID, **kwargs):
@@ -306,9 +307,9 @@ def main(*args, **kwargs):
     delayer = Greatschools_Schools_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(30, 60))
     reader = Greatschools_Schools_WebReader(name="GreatSchoolsReader", wait=10)
     browser = Greatschools_Schools_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
-    downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*3, delay=None)
-    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10, timeout=60*3)
+    scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=1, file=REPORT_FILE)
+    downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2, delay=None)
+    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10, timeout=60*2)
     vpn += downloader
     downloader(*args, browser=browser, reader=reader, scheduler=scheduler, delayer=delayer, **kwargs)
     vpn.start()
