@@ -13,6 +13,7 @@ import logging
 import traceback
 import regex as re
 from abc import ABC
+from datetime import date as Date
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 MODULE_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
@@ -207,6 +208,8 @@ contents = [Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, G
 
 
 class Greatschools_Schools_WebPage(GeneratorMixin, WebContentPage, ABC, contents=contents):
+    @staticmethod
+    def date(): return {"date": Date.today().strftime("%m/%d/%Y")}
     def query(self): return {"GID": str(identity_parser(self.url))}
 
     def setup(self, *args, **kwargs):
@@ -234,31 +237,31 @@ class Greatschools_Schools_WebPage(GeneratorMixin, WebContentPage, ABC, contents
             schools["type"] = str(self[Greatschools_WebData.TYPE].data())
         if bool(self[Greatschools_WebData.GRADES]):
             schools["grades"] = str(self[Greatschools_WebData.GRADES].data())
-        return {**self.query(), **schools}
+        return {**self.query(), **schools, **self.date()}
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebScore.KEYS]), value=None)
     def scores(self):
         items = zip(iter(self[Greatschools_WebScore.KEYS]), iter(self[Greatschools_WebScore.VALUES]))
         scores = {key.data(): value.data() for key, value in items}
-        return {**self.query(), **scores}
+        return {**self.query(), **scores, **self.date()}
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebTest.KEYS]), value=None)
     def testing(self):
         items = zip(iter(self[Greatschools_WebTest.KEYS]), iter(self[Greatschools_WebTest.VALUES]))
         testing = {key.data(): value.data() for key, value in items}
-        return {**self.query(), **testing}
+        return {**self.query(), **testing, **self.date()}
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebDemographic.KEYS]), value=None)
     def demographics(self):
         items = zip(iter(self[Greatschools_WebDemographic.KEYS]), iter(self[Greatschools_WebDemographic.VALUES]))
         demographics = {key.data(): value.data() for key, value in items}
-        return {**self.query(), **demographics}
+        return {**self.query(), **demographics, **self.date()}
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebTeacher.KEYS]), value=None)
     def teachers(self):
         items = zip(iter(self[Greatschools_WebTeacher.KEYS]), iter(self[Greatschools_WebTeacher.VALUES]))
         demographics = {key.data(): value.data() for key, value in items}
-        return {**self.query(), **demographics}
+        return {**self.query(), **demographics, **self.date()}
 
 
 class Greatschools_Schools_WebDownloader(DelayMixin, CacheMixin, WebVPNProcess, WebDownloader):
@@ -307,7 +310,7 @@ def main(*args, **kwargs):
     delayer = Greatschools_Schools_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(30, 60))
     reader = Greatschools_Schools_WebReader(name="GreatSchoolsReader", wait=10)
     browser = Greatschools_Schools_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=1, file=REPORT_FILE)
+    scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
     downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2, delay=None)
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10, timeout=60*2)
     vpn += downloader
