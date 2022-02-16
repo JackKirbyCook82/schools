@@ -33,7 +33,7 @@ from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, GeneratorMixin
+from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin
 from webscraping.webpages import WebData, WebConditions, WebOperations
 from webscraping.webpages import RefusalError, CaptchaError, BadRequestError, PaginationError
 from webscraping.webloaders import WebLoader
@@ -176,7 +176,7 @@ class Greatschools_WebOperations(WebOperations):
     NEXT = Greatschools_NextPage_MoveToClick
 
 
-class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, GeneratorMixin, WebBrowserPage, contents=[Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations]):
+class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin, WebBrowserPage, contents=[Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations]):
     def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_WebData.ZIPCODE].data())}
     def setup(self, *args, **kwargs): pass
 
@@ -255,6 +255,7 @@ def main(*args, **kwargs):
 if __name__ == "__main__":
     sys.argv += ["state=CA", "city=Bakersfield"]
     logging.basicConfig(level="INFO", format="[%(levelname)s, %(threadName)s]:  %(message)s", handlers=[logging.StreamHandler(sys.stdout)])
+    logging.getLogger("seleniumwire").setLevel(logging.ERROR)
     inputparser = InputParser(proxys={"assign": "=", "space": "_"}, parsers={}, default=str)
     inputparser(*sys.argv[1:])
     main(*inputparser.arguments, **inputparser.parameters)

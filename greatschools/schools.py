@@ -37,7 +37,7 @@ from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebContentPage, GeneratorMixin, webpage_bypass
+from webscraping.webpages import WebBrowserPage, ContentMixin, GeneratorMixin, webpage_bypass
 from webscraping.webpages import WebData, WebActions, WebConditions
 from webscraping.webpages import RefusalError, CaptchaError, BadRequestError
 from webscraping.webloaders import WebLoader
@@ -130,8 +130,7 @@ class Greatschools_Schools_WebReader(WebReader, retrys=Retrys(retries=3, backoff
 
 class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatschools.org"):
     @staticmethod
-    def path(*args, GID, name, address, **kwargs):
-        return [address.state, address.city, "{GID}_{name}".format(GID=str(GID), name="-".join(str(name).split(" ")))]
+    def path(*args, GID, name, address, **kwargs): return [address.state, address.city, "{GID}_{name}".format(GID=str(GID), name="-".join(str(name).split(" ")))]
 
 
 class Greatschools_Schools_WebQueue(WebQueue): pass
@@ -207,7 +206,7 @@ class Greatschools_WebConditions(WebConditions):
 contents = [Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher, Greatschools_WebActions, Greatschools_WebConditions]
 
 
-class Greatschools_Schools_WebPage(GeneratorMixin, WebContentPage, ABC, contents=contents):
+class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage, ABC, contents=contents):
     @staticmethod
     def date(): return {"date": Date.today().strftime("%m/%d/%Y")}
     def query(self): return {"GID": str(identity_parser(self.url))}
@@ -329,6 +328,7 @@ def main(*args, **kwargs):
 if __name__ == "__main__":
     sys.argv += ["state=CA", "city=Bakersfield"]
     logging.basicConfig(level="INFO", format="[%(levelname)s, %(threadName)s]:  %(message)s", handlers=[logging.StreamHandler(sys.stdout)])
+    logging.getLogger("seleniumwire").setLevel(logging.ERROR)
     inputparser = InputParser(proxys={"assign": "=", "space": "_"}, parsers={}, default=str)
     inputparser(*sys.argv[1:])
     main(*inputparser.arguments, **inputparser.parameters)
