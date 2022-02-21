@@ -14,6 +14,7 @@ import traceback
 import regex as re
 from abc import ABC
 from datetime import date as Date
+from selenium.common.exceptions import StaleElementReferenceException, ElementNotInteractableException
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 MODULE_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
@@ -39,7 +40,7 @@ from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, ContentMixin, GeneratorMixin, webpage_bypass
 from webscraping.webpages import WebData, WebActions, WebConditions
-from webscraping.webpages import RefusalError, CaptchaError, BadRequestError
+from webscraping.webpages import RefusalError, CaptchaError, BadRequestError, StaleError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
@@ -214,9 +215,12 @@ class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage,
     def setup(self, *args, **kwargs):
         if not hasattr(self, "driver"):
             return
-        self[Greatschools_WebActions.SCROLL](*args, commands={"pagedown": 20}, **kwargs)
-        if bool(self[Greatschools_WebActions.OPEN]):
-            self[Greatschools_WebActions.OPEN](*args, **kwargs)
+        try:
+            self[Greatschools_WebActions.SCROLL](*args, commands={"pagedown": 20}, **kwargs)
+            if bool(self[Greatschools_WebActions.OPEN]):
+                self[Greatschools_WebActions.OPEN](*args, **kwargs)
+        except (StaleElementReferenceException, ElementNotInteractableException):
+            raise StaleError(self)
 
     def execute(self, *args, **kwargs):
         query = self.query()
@@ -289,6 +293,8 @@ class Greatschools_Schools_WebDownloader(DelayMixin, CacheMixin, WebVPNProcess, 
                             query.abandon()
                         except BadRequestError:
                             query.success()
+                        except StaleError:
+                            query.failure()
                         except BaseException as error:
                             query.error()
                             raise error
@@ -309,7 +315,7 @@ def main(*args, **kwargs):
     delayer = Greatschools_Schools_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(30, 60))
     reader = Greatschools_Schools_WebReader(name="GreatSchoolsReader", wait=10)
     browser = Greatschools_Schools_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
+    scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=10, file=REPORT_FILE)
     downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2, delay=None)
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10, timeout=60*2)
     vpn += downloader

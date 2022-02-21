@@ -35,7 +35,7 @@ from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin
 from webscraping.webpages import WebData, WebConditions, WebOperations
-from webscraping.webpages import RefusalError, CaptchaError, BadRequestError, PaginationError
+from webscraping.webpages import RefusalError, CaptchaError, BadRequestError, PaginationError, StaleError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
@@ -222,9 +222,9 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                             except BadRequestError:
                                 query.success()
                                 break
-                            except PaginationError as error:
+                            except (PaginationError, StaleError):
                                 query.failure()
-                                raise error
+                                break
                             except BaseException as error:
                                 query.error()
                                 raise error
@@ -236,7 +236,7 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
 def main(*args, **kwargs):
     delayer = Greatschools_Links_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(10, 20))
     browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=2, file=REPORT_FILE)
+    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=10, file=REPORT_FILE)
     downloader = Greatschools_Links_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2)
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10, timeout=60*2)
     vpn += downloader
