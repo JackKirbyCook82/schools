@@ -35,13 +35,13 @@ from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin
 from webscraping.webpages import WebData, WebConditions, WebOperations
-from webscraping.webpages import RefusalError, CaptchaError, BadRequestError, PaginationError, StaleError
+from webscraping.webpages import RefusalError, CaptchaError, BadRequestError, PaginationError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
 from webscraping.webdownloaders import WebDownloader, CacheMixin
 from webscraping.webdata import WebClickable, WebText, WebLink, WebClickables, WebBadRequest, WebCaptcha
-from webscraping.webactions import WebMoveToClick
+from webscraping.webactions import WebMoveToClick, StaleWebActionError, InteractionWebActionError
 from webscraping.webvariables import Address
 
 __version__ = "1.0.0"
@@ -222,7 +222,7 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                             except BadRequestError:
                                 query.success()
                                 break
-                            except (PaginationError, StaleError):
+                            except (PaginationError, StaleWebActionError, InteractionWebActionError):
                                 query.failure()
                                 break
                             except BaseException as error:

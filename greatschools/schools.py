@@ -14,7 +14,6 @@ import traceback
 import regex as re
 from abc import ABC
 from datetime import date as Date
-from selenium.common.exceptions import StaleElementReferenceException, ElementNotInteractableException
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 MODULE_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
@@ -40,13 +39,13 @@ from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, ContentMixin, GeneratorMixin, webpage_bypass
 from webscraping.webpages import WebData, WebActions, WebConditions
-from webscraping.webpages import RefusalError, CaptchaError, BadRequestError, StaleError
+from webscraping.webpages import RefusalError, CaptchaError, BadRequestError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
 from webscraping.webdownloaders import WebDownloader, CacheMixin, DelayMixin
 from webscraping.webdata import WebClickable, WebText, WebTexts, WebCaptcha
-from webscraping.webactions import WebScroll, WebMoveToClick
+from webscraping.webactions import WebScroll, WebMoveToClick, StaleWebActionError, InteractionWebActionError
 from webscraping.webvariables import Address, Price
 
 __version__ = "1.0.0"
@@ -215,12 +214,9 @@ class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage,
     def setup(self, *args, **kwargs):
         if not hasattr(self, "driver"):
             return
-        try:
-            self[Greatschools_WebActions.SCROLL](*args, commands={"pagedown": 20}, **kwargs)
-            if bool(self[Greatschools_WebActions.OPEN]):
-                self[Greatschools_WebActions.OPEN](*args, **kwargs)
-        except (StaleElementReferenceException, ElementNotInteractableException):
-            raise StaleError(self)
+        self[Greatschools_WebActions.SCROLL](*args, commands={"pagedown": 20}, **kwargs)
+        if bool(self[Greatschools_WebActions.OPEN]):
+            self[Greatschools_WebActions.OPEN](*args, **kwargs)
 
     def execute(self, *args, **kwargs):
         query = self.query()
@@ -293,7 +289,7 @@ class Greatschools_Schools_WebDownloader(DelayMixin, CacheMixin, WebVPNProcess, 
                             query.abandon()
                         except BadRequestError:
                             query.success()
-                        except StaleError:
+                        except (StaleWebActionError, InteractionWebActionError):
                             query.failure()
                         except BaseException as error:
                             query.error()
