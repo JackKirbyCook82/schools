@@ -206,8 +206,13 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                         url = Greatschools_Links_WebURL(**query.todict())
                         reload = False
                         while True:
-                            if not bool(self.vpn):
-                                self.wait()
+                            if not bool(self.proceed):
+                                query.abandon()
+                                self.terminate()
+                            elif not bool(self.ready):
+                                if not self.wait():
+                                    query.abandon()
+                                    self.terminate()
                             if not bool(driver):
                                 driver.reset()
                             try:
@@ -238,11 +243,12 @@ def main(*args, **kwargs):
     browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
     scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=10, file=REPORT_FILE)
     downloader = Greatschools_Links_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2)
-    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, wait=10, timeout=60*2)
+    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, timeout=60*2)
     vpn += downloader
     downloader(*args, browser=browser, scheduler=scheduler, delayer=delayer, **kwargs)
-    vpn.start()
-    vpn.join()
+    with vpn:
+        downloader.start()
+        downloader.join()
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))
