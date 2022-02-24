@@ -272,10 +272,10 @@ class Greatschools_Schools_WebDownloader(DelayMixin, CacheMixin, WebVPNProcess, 
                 page = Greatschools_Schools_WebPage(driver, name="GreatSchoolsPage", delayer=delayer)
                 with queue:
                     for query in queue:
-                        if not bool(self.proceed):
+                        if not bool(self.vpn.operational):
                             query.abandon()
                             self.terminate()
-                        elif not bool(self.ready):
+                        elif not bool(self.vpn.ready):
                             if not self.wait():
                                 query.abandon()
                                 self.terminate()
@@ -290,7 +290,7 @@ class Greatschools_Schools_WebDownloader(DelayMixin, CacheMixin, WebVPNProcess, 
                                 yield Greatschools_Schools_WebQuery(fields, name="GreatschoolsQuery"), Greatschools_Schools_WebDataset({dataset: data}, name="GreatschoolsDataset")
                         except (RefusalError, CaptchaError):
                             driver.trip()
-                            self.trip()
+                            self.vpn.trip()
                             query.abandon()
                         except BadRequestError:
                             query.success()
@@ -321,9 +321,11 @@ def main(*args, **kwargs):
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, timeout=60*2)
     vpn += downloader
     downloader(*args, browser=browser, reader=reader, scheduler=scheduler, delayer=delayer, **kwargs)
-    with vpn:
-        downloader.start()
-        downloader.join()
+    vpn.start()
+    downloader.start()
+    downloader.join()
+    vpn.stop()
+    vpn.join()
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))

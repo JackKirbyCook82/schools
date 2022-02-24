@@ -206,10 +206,10 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                         url = Greatschools_Links_WebURL(**query.todict())
                         reload = False
                         while True:
-                            if not bool(self.proceed):
+                            if not bool(self.vpn.operational):
                                 query.abandon()
                                 self.terminate()
-                            elif not bool(self.ready):
+                            elif not bool(self.vpn.ready):
                                 if not self.wait():
                                     query.abandon()
                                     self.terminate()
@@ -222,7 +222,7 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                                     yield Greatschools_Links_WebQuery(fields, name="GreatSchoolsQuery"), Greatschools_Links_WebDataset({dataset: data}, name="GreatSchoolsDataset")
                             except (RefusalError, CaptchaError):
                                 driver.trip()
-                                self.trip()
+                                self.vpn.trip()
                                 reload = True
                             except BadRequestError:
                                 query.success()
@@ -241,14 +241,16 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
 def main(*args, **kwargs):
     delayer = Greatschools_Links_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(10, 20))
     browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=10, file=REPORT_FILE)
+    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=3, file=REPORT_FILE)
     downloader = Greatschools_Links_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2)
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, timeout=60*2)
     vpn += downloader
     downloader(*args, browser=browser, scheduler=scheduler, delayer=delayer, **kwargs)
-    with vpn:
-        downloader.start()
-        downloader.join()
+    vpn.start()
+    downloader.start()
+    downloader.join()
+    vpn.stop()
+    vpn.join()
     for query, results in downloader.results:
         LOGGER.info(str(query))
         LOGGER.info(str(results))
