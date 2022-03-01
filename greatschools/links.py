@@ -210,7 +210,8 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                                 query.abandon()
                                 self.terminate()
                             elif not bool(self.vpn.ready):
-                                if not self.wait():
+                                ready = self.wait()
+                                if not ready:
                                     query.abandon()
                                     self.terminate()
                             if not bool(driver):
@@ -240,10 +241,10 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
 
 def main(*args, **kwargs):
     delayer = Greatschools_Links_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(10, 20))
-    browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", loadtime=50, wait=10)
-    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=3, file=REPORT_FILE)
-    downloader = Greatschools_Links_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2)
-    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", loadtime=10, timeout=60*2)
+    browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", timeout=60, wait=15)
+    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=10, file=REPORT_FILE)
+    downloader = Greatschools_Links_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2, wait=15)
+    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", timeout=60*2, wait=15)
     vpn += downloader
     downloader(*args, browser=browser, scheduler=scheduler, delayer=delayer, **kwargs)
     vpn.start()
