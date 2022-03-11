@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sun May 2 2021
-@name:   Greatschools Pages Download Application
+@name:   Greatschools Schools Download Application
 @author: Jack Kirby Cook
 
 """
@@ -35,7 +35,6 @@ from utilities.sync import load
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
-from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, ContentMixin, GeneratorMixin, webpage_bypass
 from webscraping.webpages import WebData, WebActions, WebConditions
@@ -44,13 +43,13 @@ from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
 from webscraping.webdownloaders import WebDownloader, CacheMixin
-from webscraping.webdata import WebClickable, WebText, WebTexts, WebCaptcha
+from webscraping.webdata import WebClickable, WebText, WebLink, WebTexts, WebCaptcha
 from webscraping.webactions import WebScroll, WebMoveToClick, StaleWebActionError, InteractionWebActionError
 from webscraping.webvariables import Address, Price
 
 __version__ = "1.0.0"
 __author__ = "Jack Kirby Cook"
-__all__ = ["Greatschools_Schools_WebDelayer", "Greatschools_Schools_WebBrowser", "Greatschools_Schools_WebReader", "Greatschools_Schools_WebDownloader", "Greatschools_Schools_WebScheduler"]
+__all__ = ["Greatschools_Schools_WebDelayer", "Greatschools_Schools_WebBrowser", "Greatschools_Schools_WebDownloader", "Greatschools_Schools_WebScheduler"]
 __copyright__ = "Copyright 2021, Jack Kirby Cook"
 __license__ = ""
 
@@ -64,6 +63,7 @@ address_xpath = r"//div[contains(@class, 'address')]//div[@class='content']"
 filtration_xpath = r"//div[@class='community-breadcrumbs']//span[not(contains(@class, 'divider')) and not(./span)]"
 name_xpath = r"//h1[@class='school-name']"
 details_xpath = r"//div[@class='hero-stats-layout']"
+boundary_xpath = r"//div[@data-ga-click-label='Neighborhood']//a[text()='School attendance zone']"
 score_keys_xpath = r"//div[@class='rating-snapshot']/a//div[contains(@class, 'title')]"
 score_values_xpath = r"//div[@class='rating-snapshot']/a//div[contains(@class, 'value')]"
 test_keys_xpath = r"//div[@id='Test_scores']//div[contains(@class, 'breakdown')]/span"
@@ -80,6 +80,7 @@ address_webloader = WebLoader(xpath=address_xpath)
 filtration_webloader = WebLoader(xpath=filtration_xpath)
 name_webloader = WebLoader(xpath=name_xpath)
 details_webloader = WebLoader(xpath=details_xpath)
+boundary_webloader = WebLoader(xpath=boundary_xpath)
 score_keys_webloader = WebLoader(xpath=score_keys_xpath)
 score_values_webloader = WebLoader(xpath=score_values_xpath)
 test_keys_webloader = WebLoader(xpath=test_keys_xpath)
@@ -95,6 +96,7 @@ identity_pattern = "(?<=\/)\d+"
 type_pattern = "[A-Za-z]+(?= school)"
 grade_pattern = "(?<=Grades |Grade )[0-9A-Z-]+"
 identity_parser = lambda x: str(re.findall(identity_pattern, x)[0])
+link_parser = lambda x: "".join(["https://www.greatschools.org", x]) if not str(x).startswith("https://www.greatschools.org") else x
 address_parser = lambda x: str(Address.fromsearch(x))
 price_parser = lambda x: str(Price.fromsearch(x))
 str_parser = lambda x: str(x).strip()
@@ -108,6 +110,7 @@ class Greatschools_Filtration(WebTexts, loader=filtration_webloader): pass
 class Greatschools_Name(WebText, loader=name_webloader, parsers={"data": str_parser}): pass
 class Greatschools_Type(WebText, loader=details_webloader, parsers={"data": type_parser}): pass
 class Greatschools_Grades(WebText, loader=details_webloader, parsers={"data": grade_parser}): pass
+class Greatschools_Boundary(WebLink, loader=boundary_webloader, parsers={"link": link_parser}): pass
 class Greatschools_ScoreKeys(WebTexts, loader=score_keys_webloader, parsers={"data": str_parser}, optional=True): pass
 class Greatschools_ScoreValues(WebTexts, loader=score_values_webloader, parsers={"data": str_parser}, optional=True): pass
 class Greatschools_TestKeys(WebTexts, loader=test_keys_webloader, parsers={"data": str_parser}, optional=True): pass
@@ -125,7 +128,6 @@ class Greatschools_TeacherMore_MoveToClick(WebMoveToClick, on=Greatschools_Teach
 
 class Greatschools_Schools_WebDelayer(WebDelayer): pass
 class Greatschools_Schools_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
-class Greatschools_Schools_WebReader(WebReader, retrys=Retrys(retries=3, backoff=0.3, httpcodes=(500, 502, 504)), headers=Headers(UserAgents.load(USERAGENTS_FILE, limit=100))): pass
 
 
 class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatschools.org"):
@@ -135,7 +137,7 @@ class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatsch
 
 class Greatschools_Schools_WebQueue(WebQueue): pass
 class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Schools_WebDataset(WebDataset, fields=["schools", "scores", "testing", "demographics", "teachers"]): pass
+class Greatschools_Schools_WebDataset(WebDataset, fields=["schools", "scores", "testing", "demographics", "teachers", "boundary"]): pass
 
 
 class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
@@ -173,6 +175,7 @@ class Greatschools_WebData(WebData):
     NAME = Greatschools_Name
     TYPE = Greatschools_Type
     GRADES = Greatschools_Grades
+    BOUNDARY = None
 
 
 class Greatschools_WebScore(WebData):
@@ -213,8 +216,6 @@ class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage,
     def query(self): return {"GID": str(identity_parser(self.url))}
 
     def setup(self, *args, **kwargs):
-        if not hasattr(self, "driver"):
-            return
         self[Greatschools_WebActions.SCROLL](*args, commands={"pagedown": 20}, **kwargs)
         if bool(self[Greatschools_WebActions.OPEN]):
             self[Greatschools_WebActions.OPEN](*args, **kwargs)
@@ -226,6 +227,7 @@ class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage,
         yield query, "testing", self.testing()
         yield query, "demographics", self.demographics()
         yield query, "teachers", self.teachers()
+        yield query, "boundary", self.boundary()
 
     def schools(self):
         schools = {}
@@ -263,12 +265,15 @@ class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage,
         demographics = {key.data(): value.data() for key, value in items}
         return {**self.query(), **demographics, **self.date()}
 
+    @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebData.BOUNDARY]), value=None)
+    def boundary(self): return {**self.query(), "link": self[Greatschools_WebData.BOUNDARY].link()}
+
 
 class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader):
     def execute(self, *args, browser, scheduler, delayer, referer="https://www.google.com", **kwargs):
         with scheduler(*args, **kwargs) as queue:
             if not queue:
-                self.delay()
+                return
             with browser() as driver:
                 page = Greatschools_Schools_WebPage(driver, name="GreatSchoolsPage", delayer=delayer)
                 with queue:

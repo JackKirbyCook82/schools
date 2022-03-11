@@ -12,6 +12,7 @@ import warnings
 import logging
 import traceback
 import regex as re
+from datetime import date as Date
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 MODULE_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
@@ -177,6 +178,8 @@ class Greatschools_WebOperations(WebOperations):
 
 
 class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin, WebBrowserPage, contents=[Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations]):
+    @staticmethod
+    def date(): return {"date": Date.today().strftime("%m/%d/%Y")}
     def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_WebData.ZIPCODE].data())}
     def setup(self, *args, **kwargs): pass
 
