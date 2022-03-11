@@ -39,11 +39,11 @@ from webscraping.webreaders import WebReader, Retrys, UserAgents, Headers
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, ContentMixin, GeneratorMixin, webpage_bypass
 from webscraping.webpages import WebData, WebActions, WebConditions
-from webscraping.webpages import RefusalError, CaptchaError, BadRequestError
+from webscraping.weberrors import WebPageError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
-from webscraping.webdownloaders import WebDownloader, CacheMixin, DelayMixin
+from webscraping.webdownloaders import WebDownloader, CacheMixin
 from webscraping.webdata import WebClickable, WebText, WebTexts, WebCaptcha
 from webscraping.webactions import WebScroll, WebMoveToClick, StaleWebActionError, InteractionWebActionError
 from webscraping.webvariables import Address, Price
@@ -157,6 +157,7 @@ class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
             dataframe = dataframe[(dataframe["city"].isin(list(citys)) | dataframe["zipcode"].isin(list(zipcodes)))]
         if state:
             dataframe = dataframe[dataframe["state"] == state]
+        dataframe = dataframe.drop_duplicates(subset="GID", keep="last", ignore_index=True)
         return list(dataframe["GID"].to_numpy())
 
     @staticmethod
@@ -263,7 +264,7 @@ class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage,
         return {**self.query(), **demographics, **self.date()}
 
 
-class Greatschools_Schools_WebDownloader(DelayMixin, CacheMixin, WebVPNProcess, WebDownloader):
+class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader):
     def execute(self, *args, browser, scheduler, delayer, referer="https://www.google.com", **kwargs):
         with scheduler(*args, **kwargs) as queue:
             if not queue:
@@ -289,11 +290,11 @@ class Greatschools_Schools_WebDownloader(DelayMixin, CacheMixin, WebVPNProcess, 
                             page.setup(*args, **kwargs)
                             for fields, dataset, data in page(*args, **kwargs):
                                 yield Greatschools_Schools_WebQuery(fields, name="GreatschoolsQuery"), Greatschools_Schools_WebDataset({dataset: data}, name="GreatschoolsDataset")
-                        except (RefusalError, CaptchaError):
+                        except (WebPageError["refusal"], WebPageError["captcha"]):
                             driver.trip()
                             self.vpn.trip()
                             query.abandon()
-                        except BadRequestError:
+                        except WebPageError["badrequest"]:
                             query.success()
                         except (StaleWebActionError, InteractionWebActionError):
                             query.failure()
@@ -315,13 +316,12 @@ class Greatschools_Schools_WebDownloader(DelayMixin, CacheMixin, WebVPNProcess, 
 
 def main(*args, **kwargs):
     delayer = Greatschools_Schools_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(30, 60))
-    reader = Greatschools_Schools_WebReader(name="GreatSchoolsReader", wait=10)
     browser = Greatschools_Schools_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", timeout=60, wait=15)
     scheduler = Greatschools_Schools_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=50, file=REPORT_FILE)
     downloader = Greatschools_Schools_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2, wait=15)
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", timeout=60*2, wait=15)
     vpn += downloader
-    downloader(*args, browser=browser, reader=reader, scheduler=scheduler, delayer=delayer, **kwargs)
+    downloader(*args, browser=browser, scheduler=scheduler, delayer=delayer, **kwargs)
     vpn.start()
     downloader.start()
     downloader.join()

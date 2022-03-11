@@ -35,7 +35,7 @@ from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin
 from webscraping.webpages import WebData, WebConditions, WebOperations
-from webscraping.webpages import RefusalError, CaptchaError, BadRequestError, PaginationError
+from webscraping.weberrors import WebPageError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
@@ -221,14 +221,14 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
                                 page.setup(*args, **kwargs)
                                 for fields, dataset, data in page(*args, **kwargs):
                                     yield Greatschools_Links_WebQuery(fields, name="GreatSchoolsQuery"), Greatschools_Links_WebDataset({dataset: data}, name="GreatSchoolsDataset")
-                            except (RefusalError, CaptchaError):
+                            except (WebPageError["refusal"], WebPageError["captcha"]):
                                 driver.trip()
                                 self.vpn.trip()
                                 reload = True
-                            except BadRequestError:
+                            except WebPageError["badrequest"]:
                                 query.success()
                                 break
-                            except (PaginationError, StaleWebActionError, InteractionWebActionError):
+                            except (WebPageError["pagination"], StaleWebActionError, InteractionWebActionError):
                                 query.failure()
                                 break
                             except BaseException as error:
