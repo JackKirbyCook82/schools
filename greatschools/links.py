@@ -88,11 +88,13 @@ pagination_webloader = WebLoader(xpath=pagination_xpath)
 
 identity_pattern = "(?<=\/)\d+(?=\-)"
 identity_parser = lambda x: str(re.findall(identity_pattern, x)[0])
+name_pattern = "(?<=\d)[A-Za-z\-]+(?=\/)"
+name_parser = lambda x: re.findall(name_pattern, x)[0].replace("-", " ").strip() if str(x).startswith("https://www.greatschools.org") else str(x).strip()
+type_parser = lambda x: str(re.findall(re.compile(r"Public district|Public charter|Private", re.IGNORECASE), x)[0])
+address_parser = lambda x: str(Address.fromsearch(x))
 zipcode_parser = lambda x: str(re.findall(r"\d{5}$", x)[0])
 results_parser = lambda x: str(re.findall(r"(?<=of )[\d\,]+(?= schools)", x)[0])
-address_parser = lambda x: Address.fromsearch(x)
-name_parser = lambda x: str(x).strip()
-type_parser = lambda x: str(re.findall(re.compile(r"Public district|Public charter|Private", re.IGNORECASE), x)[0])
+link_parser = lambda x: "".join(["https://www.greatschools.org", x]) if not str(x).startswith("https://www.greatschools.org") else x
 pagination_parser = lambda x: str(int(str(x).strip()))
 
 
@@ -101,7 +103,7 @@ class Greatschools_BadRequest(WebBadRequest, loader=badrequest_webloader, option
 class Greatschools_Zipcode(WebText, loader=zipcode_webloader, parsers={"data": zipcode_parser}): pass
 class Greatschools_Results(WebText, loader=results_webloader, parsers={"data": results_parser}, optional=True): pass
 class Greatschools_Contents(WebClickables, loader=contents_webloader, optional=True): pass
-class Greatschools_ContentsLink(WebLink, loader=link_contents_webloader, parsers={"data": identity_parser}): pass
+class Greatschools_ContentsLink(WebLink, loader=link_contents_webloader, parsers={"key": identity_parser, "data": name_parser, "link": link_parser}): pass
 class Greatschools_ContentsAddress(WebText, loader=address_contents_webloader, parsers={"data": address_parser}, optional=True): pass
 class Greatschools_ContentsName(WebText, loader=name_contents_webloader, parsers={"data": name_parser}, optional=True): pass
 class Greatschools_ContentsType(WebText, loader=type_contents_webloader, parsers={"data": type_parser}, optional=True): pass
@@ -122,10 +124,6 @@ class Greatschools_NextPage_MoveToClick(WebMoveToClick, on=Greatschools_NextPage
 class Greatschools_Pagination_MoveToClick(WebMoveToClick, on=Greatschools_Pagination): pass
 
 
-class Greatschools_Links_WebDelayer(WebDelayer): pass
-class Greatschools_Links_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
-
-
 class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschools.org"):
     @staticmethod
     def path(*args, **kwargs): return ["search", "search.zipcode"]
@@ -133,6 +131,8 @@ class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschoo
     def parm(*args, zipcode, pagination=1, **kwargs): return {"page": str(int(pagination)) if pagination > 1 else None, "sort": "rating", "zip": "{:05.0f}".format(int(zipcode))}
 
 
+class Greatschools_Links_WebDelayer(WebDelayer): pass
+class Greatschools_Links_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Links_WebQueue(WebQueue): pass
 class Greatschools_Links_WebQuery(WebQuery, WebQueueable, fields=["dataset", "zipcode"]): pass
 class Greatschools_Links_WebDataset(WebDataset, fields=["links"]): pass
@@ -177,7 +177,8 @@ class Greatschools_WebOperations(WebOperations):
     NEXT = Greatschools_NextPage_MoveToClick
 
 
-class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin, WebBrowserPage, contents=[Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations]):
+class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin, WebBrowserPage,
+                                 contents=[Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations]):
     @staticmethod
     def date(): return {"date": Date.today().strftime("%m/%d/%Y")}
     def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_WebData.ZIPCODE].data())}
@@ -187,7 +188,7 @@ class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, GeneratorMixin
         if not bool(self[Greatschools_WebData.RESULTS]):
             return
         query = self.query()
-        data = [{"GID": content["link"].data(), "address": content["address"].data(), "link": content["link"].url} for content in iter(self)]
+        data = [{"GID": content["link"].key(), "address": content["address"].data(), "link": content["link"].link()} for content in iter(self)]
         yield query, "links", data
         nextpage = next(self)
         if bool(nextpage):
@@ -245,7 +246,7 @@ class Greatschools_Links_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader,
 def main(*args, **kwargs):
     delayer = Greatschools_Links_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(10, 20))
     browser = Greatschools_Links_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", timeout=60, wait=15)
-    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=10, file=REPORT_FILE)
+    scheduler = Greatschools_Links_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=5, file=REPORT_FILE)
     downloader = Greatschools_Links_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2, wait=15)
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", timeout=60*2, wait=15)
     vpn += downloader

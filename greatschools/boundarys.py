@@ -11,8 +11,10 @@ import os.path
 import warnings
 import logging
 import traceback
+import json
 import regex as re
 from abc import ABC
+from seleniumwire.utils import decode
 from datetime import date as Date
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -58,50 +60,31 @@ LOGGER = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
 
 captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"
-address_xpath = r"//div[contains(@class, 'address')]//div[@class='content']"
-filtration_xpath = r"//div[@class='community-breadcrumbs']//span[not(contains(@class, 'divider')) and not(./span)]"
-name_xpath = r"//h1[@class='school-name']"
-details_xpath = r"//div[@class='hero-stats-layout']"
-boundary_xpath = r"//div[@data-ga-click-label='Neighborhood']//a[text()='School attendance zone']"
-score_keys_xpath = r"//div[@class='rating-snapshot']/a//div[contains(@class, 'title')]"
-score_values_xpath = r"//div[@class='rating-snapshot']/a//div[contains(@class, 'value')]"
-test_keys_xpath = r"//div[@id='Test_scores']//div[contains(@class, 'breakdown')]/span"
-test_values_xpath = r"//div[@id='Test_scores']//div[contains(@class, 'percentage')]"
-demographic_keys_xpath = r"//div[@id='Students']//div[contains(@class, 'breakdown')]/span"
-demographic_values_xpath = r"//div[@id='Students']//div[contains(@class, 'percentage')]"
-teacher_keys_xpath = r"//div[@id='Teachers_staff']//div[contains(@class, 'viz-container')]//div[@class='label']"
-teacher_values_xpath = r"//div[@id='Teachers_staff']//div[contains(@class, 'viz-container')]//div[@class='text-viz']/div[@class='value']"
-teacher_more_xpath = r"//div[@id='Teachers_staff']//div[@class='show-more__button']"
-
-
 captcha_webloader = WebLoader(xpath=captcha_xpath, timeout=5)
 identity_pattern = "(?<=\/)\d+"
 identity_parser = lambda x: str(re.findall(identity_pattern, x)[0])
-link_parser = lambda x: "".join(["https://www.greatschools.org", x]) if not str(x).startswith("https://www.greatschools.org") else x
+
+
+class Greatschools_Boundary_HTMLWebURL(WebURL, protocol="https", domain="www.greatschools.org"):
+    @staticmethod
+    def path(*args, **kwargs): return ["school-district-boundaries-map"]
+    @staticmethod
+    def parm(*args, GID, state, **kwargs): return {"schoolId": str(GID), "state": str(state)}
+
+
+# class Greatschools_Boundary_JSONWebURL(WebURL, protocol="https", domain="www.greatschools.org"):
+#     @staticmethod
+#     def path(*args, GID, **kwargs): return ["gsr", "api", "schools", str(GID), ""]
+#     @staticmethod
+#     def parm(*args, state, **kwargs): return {"state": str(state), "extras": "boundaries"}
 
 
 class Greatschools_Captcha(WebCaptcha, loader=captcha_webloader, optional=True): pass
-
-
 class Greatschools_Boundary_WebDelayer(WebDelayer): pass
 class Greatschools_Boundary_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
-
-
-class Greatschools_Boundary_WebURL(WebURL, protocol="https", domain="www.greatschools.org"):
-    @staticmethod
-    def path(*args, GID, name, address, **kwargs): return [address.state, address.city, "{GID}_{name}".format(GID=str(GID), name="-".join(str(name).split(" ")))]
-
-
-# class Greatschools_BoundaryShape_WebURL(WebURL, protocol="https", domain="www.greatschools.org"):
-#    @staticmethod
-#    def path(*args, **kwargs): pass
-#    @staticmethod
-#    def parm(*args, **kwargs): pass
-
-
 class Greatschools_Boundary_WebQueue(WebQueue): pass
 class Greatschools_Boundary_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Boundary_WebDataset(WebDataset, fields=["boundary"]): pass
+class Greatschools_Boundary_WebDataset(WebDataset, fields=["shapes"]): pass
 
 
 class Greatschools_Boundary_WebScheduler(WebScheduler, fields=["GID"]):
@@ -167,7 +150,7 @@ class Greatschools_Boundary_WebDownloader(CacheMixin, WebVPNProcess, WebDownload
                         if not bool(driver):
                             driver.reset()
                         url = self.url(**query.todict())
-                        url = Greatschools_Boundary_WebURL.fromstr(str(url))
+                        url = Greatschools_Boundary_HTMLWebURL.fromstr(str(url))
                         try:
                             page.load(str(url), referer=referer)
                             page.setup(*args, **kwargs)
@@ -200,7 +183,7 @@ class Greatschools_Boundary_WebDownloader(CacheMixin, WebVPNProcess, WebDownload
 def main(*args, **kwargs):
     delayer = Greatschools_Boundary_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(30, 60))
     browser = Greatschools_Boundary_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", timeout=60, wait=15)
-    scheduler = Greatschools_Boundary_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=50,file=REPORT_FILE)
+    scheduler = Greatschools_Boundary_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=5, file=REPORT_FILE)
     downloader = Greatschools_Boundary_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2, wait=15)
     vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", timeout=60 * 2, wait=15)
     vpn += downloader

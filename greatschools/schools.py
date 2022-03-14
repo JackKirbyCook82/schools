@@ -92,33 +92,34 @@ teacher_values_webloader = WebLoader(xpath=teacher_values_xpath)
 teacher_more_webloader = WebLoader(xpath=teacher_more_xpath)
 
 
-identity_pattern = "(?<=\/)\d+"
-type_pattern = "[A-Za-z]+(?= school)"
-grade_pattern = "(?<=Grades |Grade )[0-9A-Z-]+"
+identity_pattern = "(?<=\/)\d+|(?<=schoolId=)\d+"
 identity_parser = lambda x: str(re.findall(identity_pattern, x)[0])
 link_parser = lambda x: "".join(["https://www.greatschools.org", x]) if not str(x).startswith("https://www.greatschools.org") else x
 address_parser = lambda x: str(Address.fromsearch(x))
 price_parser = lambda x: str(Price.fromsearch(x))
-str_parser = lambda x: str(x).strip()
+type_pattern = "[A-Za-z]+(?= school)"
 type_parser = lambda x: str(re.findall(type_pattern, x)[0]).lower().title()
+grade_pattern = "(?<=Grades |Grade )[0-9A-Z-]+"
 grade_parser = lambda x: str(re.findall(grade_pattern, x)[0]).replace("-", "|")
+boundary_keyparser = identity_parser
+boundary_linkparser = link_parser
 
 
 class Greatschools_Captcha(WebCaptcha, loader=captcha_webloader, optional=True): pass
 class Greatschools_Address(WebText, loader=address_webloader, parsers={"data": address_parser}): pass
 class Greatschools_Filtration(WebTexts, loader=filtration_webloader): pass
-class Greatschools_Name(WebText, loader=name_webloader, parsers={"data": str_parser}): pass
+class Greatschools_Name(WebText, loader=name_webloader, parsers={"data": str.strip}): pass
 class Greatschools_Type(WebText, loader=details_webloader, parsers={"data": type_parser}): pass
 class Greatschools_Grades(WebText, loader=details_webloader, parsers={"data": grade_parser}): pass
-class Greatschools_Boundary(WebLink, loader=boundary_webloader, parsers={"link": link_parser}): pass
-class Greatschools_ScoreKeys(WebTexts, loader=score_keys_webloader, parsers={"data": str_parser}, optional=True): pass
-class Greatschools_ScoreValues(WebTexts, loader=score_values_webloader, parsers={"data": str_parser}, optional=True): pass
-class Greatschools_TestKeys(WebTexts, loader=test_keys_webloader, parsers={"data": str_parser}, optional=True): pass
-class Greatschools_TestValues(WebTexts, loader=test_values_webloader, parsers={"data": str_parser}, optional=True): pass
-class Greatschools_DemographicKeys(WebTexts, loader=demographic_keys_webloader, parsers={"data": str_parser}, optional=True): pass
-class Greatschools_DemographicValues(WebTexts, loader=demographic_values_webloader, parsers={"data": str_parser}, optional=True): pass
-class Greatschools_TeacherKeys(WebTexts, loader=teacher_keys_webloader, parsers={"data": str_parser}, optional=True): pass
-class Greatschools_TeacherValues(WebTexts, loader=teacher_values_webloader, parsers={"data": str_parser}, optional=True): pass
+class Greatschools_Boundary(WebLink, loader=boundary_webloader, parsers={"key": boundary_keyparser, "link": boundary_linkparser}): pass
+class Greatschools_ScoreKeys(WebTexts, loader=score_keys_webloader, parsers={"data": str.strip}, optional=True): pass
+class Greatschools_ScoreValues(WebTexts, loader=score_values_webloader, parsers={"data": str.strip}, optional=True): pass
+class Greatschools_TestKeys(WebTexts, loader=test_keys_webloader, parsers={"data": str.strip}, optional=True): pass
+class Greatschools_TestValues(WebTexts, loader=test_values_webloader, parsers={"data": str.strip}, optional=True): pass
+class Greatschools_DemographicKeys(WebTexts, loader=demographic_keys_webloader, parsers={"data": str.strip}, optional=True): pass
+class Greatschools_DemographicValues(WebTexts, loader=demographic_values_webloader, parsers={"data": str.strip}, optional=True): pass
+class Greatschools_TeacherKeys(WebTexts, loader=teacher_keys_webloader, parsers={"data": str.strip}, optional=True): pass
+class Greatschools_TeacherValues(WebTexts, loader=teacher_values_webloader, parsers={"data": str.strip}, optional=True): pass
 class Greatschools_TeacherMore(WebClickable, loader=teacher_more_webloader, optional=True): pass
 
 
@@ -126,15 +127,14 @@ class Greatschools_Scroll(WebScroll, wait=3): pass
 class Greatschools_TeacherMore_MoveToClick(WebMoveToClick, on=Greatschools_TeacherMore): pass
 
 
-class Greatschools_Schools_WebDelayer(WebDelayer): pass
-class Greatschools_Schools_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
-
-
 class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatschools.org"):
     @staticmethod
-    def path(*args, GID, name, address, **kwargs): return [address.state, address.city, "{GID}_{name}".format(GID=str(GID), name="-".join(str(name).split(" ")))]
+    def path(*args, GID, name, address, **kwargs):
+        return [address.state, address.city, "{GID}_{name}".format(GID=str(GID), name="-".join(str(name).split(" ")))]
 
 
+class Greatschools_Schools_WebDelayer(WebDelayer): pass
+class Greatschools_Schools_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Schools_WebQueue(WebQueue): pass
 class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
 class Greatschools_Schools_WebDataset(WebDataset, fields=["schools", "scores", "testing", "demographics", "teachers", "boundary"]): pass
@@ -175,7 +175,7 @@ class Greatschools_WebData(WebData):
     NAME = Greatschools_Name
     TYPE = Greatschools_Type
     GRADES = Greatschools_Grades
-    BOUNDARY = None
+    BOUNDARY = Greatschools_Boundary
 
 
 class Greatschools_WebScore(WebData):
@@ -207,10 +207,8 @@ class Greatschools_WebConditions(WebConditions):
     CAPTCHA = Greatschools_Captcha
 
 
-contents = [Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher, Greatschools_WebActions, Greatschools_WebConditions]
-
-
-class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage, ABC, contents=contents):
+class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage, ABC,
+                                   contents=[Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher, Greatschools_WebActions, Greatschools_WebConditions]):
     @staticmethod
     def date(): return {"date": Date.today().strftime("%m/%d/%Y")}
     def query(self): return {"GID": str(identity_parser(self.url))}
@@ -239,7 +237,7 @@ class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage,
             schools["type"] = str(self[Greatschools_WebData.TYPE].data())
         if bool(self[Greatschools_WebData.GRADES]):
             schools["grades"] = str(self[Greatschools_WebData.GRADES].data())
-        return {**self.query(), **schools, **self.date()}
+        return {**self.query(), **schools, **self.date()} if bool(schools) else None
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebScore.KEYS]), value=None)
     def scores(self):
@@ -266,7 +264,7 @@ class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage,
         return {**self.query(), **demographics, **self.date()}
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebData.BOUNDARY]), value=None)
-    def boundary(self): return {**self.query(), "link": self[Greatschools_WebData.BOUNDARY].link()}
+    def boundary(self): return {"GID": self[Greatschools_WebData.BOUNDARY].key(), "link": self[Greatschools_WebData.BOUNDARY].link()}
 
 
 class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader):
