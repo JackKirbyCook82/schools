@@ -12,6 +12,7 @@ import warnings
 import logging
 import traceback
 import json
+import pandas as pd
 import regex as re
 from abc import ABC
 from seleniumwire.utils import decode
@@ -39,7 +40,7 @@ from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
 from webscraping.webpages import WebBrowserPage, ContentMixin
-from webscraping.webpages import WebConditions
+from webscraping.webpages import WebConditions, ExecuteError
 from webscraping.weberrors import WebPageError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
@@ -56,8 +57,10 @@ __all__ = ["Greatschools_Boundary_WebDelayer", "Greatschools_Boundary_WebBrowser
 __copyright__ = "Copyright 2021, Jack Kirby Cook"
 __license__ = ""
 
+
 LOGGER = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
+
 
 captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"
 captcha_webloader = WebLoader(xpath=captcha_xpath, timeout=5)
@@ -72,11 +75,11 @@ class Greatschools_Boundary_HTMLWebURL(WebURL, protocol="https", domain="www.gre
     def parm(*args, GID, state, **kwargs): return {"schoolId": str(GID), "state": str(state)}
 
 
-# class Greatschools_Boundary_JSONWebURL(WebURL, protocol="https", domain="www.greatschools.org"):
-#     @staticmethod
-#     def path(*args, GID, **kwargs): return ["gsr", "api", "schools", str(GID), ""]
-#     @staticmethod
-#     def parm(*args, state, **kwargs): return {"state": str(state), "extras": "boundaries"}
+class Greatschools_Boundary_JSONWebURL(WebURL, protocol="https", domain="www.greatschools.org"):
+    @staticmethod
+    def path(*args, GID, **kwargs): return ["gsr", "api", "schools", str(GID), ""]
+    @staticmethod
+    def parm(*args, state, **kwargs): return {"state": str(state), "extras": "boundaries"}
 
 
 class Greatschools_Captcha(WebCaptcha, loader=captcha_webloader, optional=True): pass
@@ -126,8 +129,21 @@ class Greatschools_Boundary_WebPage(ContentMixin, WebBrowserPage, ABC, contents=
     def query(self): return {"GID": str(identity_parser(self.url))}
     def setup(self, *args, **kwargs): pass
 
-#    def execute(self, *args, **kwargs):
-#        pass
+    def execute(self, *args, state, **kwargs):
+        query = self.query()
+        url = Greatschools_Boundary_JSONWebURL(state=state, **query)
+        responses = {request.url: request.response for request in self.driver.requests}
+        try:
+            response = responses[str(url)]
+        except KeyError:
+            LOGGER.error("Response URL: {}".format(str(url)))
+            for index, key in enumerate(responses.keys()):
+                LOGGER.error("Response URL[{}]: {}".format(index, key))
+            raise ExecuteError(self)
+        content = json.loads(decode(response.body, response.headers.get('Content-Encoding', 'utf-8')))
+        values = content["boundaries"]["h"]["coordinates"][0][0][0]
+
+        return query, "shapes", file
 
 
 class Greatschools_Boundary_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader):
