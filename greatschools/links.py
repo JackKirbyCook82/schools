@@ -135,7 +135,7 @@ class Greatschools_Links_WebDelayer(WebDelayer): pass
 class Greatschools_Links_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Links_WebQueue(WebQueue): pass
 class Greatschools_Links_WebQuery(WebQuery, WebQueueable, fields=["dataset", "zipcode"]): pass
-class Greatschools_Links_WebDataset(WebDataset, fields=["links"]): pass
+class Greatschools_Links_WebDataset(WebDataset, fields={"links": "zip.csv"}): pass
 
 
 class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"], dataset=["school"]):
@@ -256,7 +256,7 @@ def main(*args, **kwargs):
     downloader.join()
     vpn.stop()
     vpn.join()
-    for query, results in downloader.results:
+    for query, results in downloader.results.items():
         LOGGER.info(str(query))
         LOGGER.info(str(results))
     if bool(vpn.error):

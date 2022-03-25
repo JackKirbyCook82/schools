@@ -12,7 +12,6 @@ import warnings
 import logging
 import traceback
 import json
-import pandas as pd
 import regex as re
 from abc import ABC
 from seleniumwire.utils import decode
@@ -45,7 +44,7 @@ from webscraping.weberrors import WebPageError
 from webscraping.webloaders import WebLoader
 from webscraping.webquerys import WebQuery, WebDataset
 from webscraping.webqueues import WebScheduler, WebQueueable, WebQueue
-from webscraping.webdownloaders import WebDownloader, CacheMixin
+from webscraping.webdownloaders import WebDownloader
 from webscraping.webdata import WebCaptcha
 from webscraping.webactions import StaleWebActionError, InteractionWebActionError
 from webscraping.webvariables import Address
@@ -87,7 +86,7 @@ class Greatschools_Boundary_WebDelayer(WebDelayer): pass
 class Greatschools_Boundary_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Boundary_WebQueue(WebQueue): pass
 class Greatschools_Boundary_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Boundary_WebDataset(WebDataset, fields=["shapes"]): pass
+class Greatschools_Boundary_WebDataset(WebDataset, fields={"shapes": "zip.shp"}): pass
 
 
 class Greatschools_Boundary_WebScheduler(WebScheduler, fields=["GID"]):
@@ -146,7 +145,7 @@ class Greatschools_Boundary_WebPage(ContentMixin, WebBrowserPage, ABC, contents=
         return query, "shapes", file
 
 
-class Greatschools_Boundary_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader):
+class Greatschools_Boundary_WebDownloader(WebVPNProcess, WebDownloader):
     def execute(self, *args, browser, scheduler, delayer, referer="https://www.google.com", **kwargs):
         with scheduler(*args, **kwargs) as queue:
             if not queue:
@@ -209,7 +208,7 @@ def main(*args, **kwargs):
     downloader.join()
     vpn.stop()
     vpn.join()
-    for query, results in downloader.results:
+    for query, results in downloader.results.items():
         LOGGER.info(str(query))
         LOGGER.info(str(results))
     if bool(vpn.error):

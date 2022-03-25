@@ -137,7 +137,7 @@ class Greatschools_Schools_WebDelayer(WebDelayer): pass
 class Greatschools_Schools_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Schools_WebQueue(WebQueue): pass
 class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Schools_WebDataset(WebDataset, fields=["schools", "scores", "testing", "demographics", "teachers", "boundary"]): pass
+class Greatschools_Schools_WebDataset(WebDataset, fields=["schools", "scores", "testing", "demographics", "teachers", "boundary"], extension="zip.csv"): pass
 
 
 class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
@@ -237,34 +237,34 @@ class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage,
             schools["type"] = str(self[Greatschools_WebData.TYPE].data())
         if bool(self[Greatschools_WebData.GRADES]):
             schools["grades"] = str(self[Greatschools_WebData.GRADES].data())
-        return {**self.query(), **schools, **self.date()} if bool(schools) else None
+        return [{**self.query(), **schools, **self.date()}] if bool(schools) else None
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebScore.KEYS]), value=None)
     def scores(self):
         items = zip(iter(self[Greatschools_WebScore.KEYS]), iter(self[Greatschools_WebScore.VALUES]))
         scores = {key.data(): value.data() for key, value in items}
-        return {**self.query(), **scores, **self.date()}
+        return [{**self.query(), **scores, **self.date()}]
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebTest.KEYS]), value=None)
     def testing(self):
         items = zip(iter(self[Greatschools_WebTest.KEYS]), iter(self[Greatschools_WebTest.VALUES]))
         testing = {key.data(): value.data() for key, value in items}
-        return {**self.query(), **testing, **self.date()}
+        return [{**self.query(), **testing, **self.date()}]
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebDemographic.KEYS]), value=None)
     def demographics(self):
         items = zip(iter(self[Greatschools_WebDemographic.KEYS]), iter(self[Greatschools_WebDemographic.VALUES]))
         demographics = {key.data(): value.data() for key, value in items}
-        return {**self.query(), **demographics, **self.date()}
+        return [{**self.query(), **demographics, **self.date()}]
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebTeacher.KEYS]), value=None)
     def teachers(self):
         items = zip(iter(self[Greatschools_WebTeacher.KEYS]), iter(self[Greatschools_WebTeacher.VALUES]))
         demographics = {key.data(): value.data() for key, value in items}
-        return {**self.query(), **demographics, **self.date()}
+        return [{**self.query(), **demographics, **self.date()}]
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebData.BOUNDARY]), value=None)
-    def boundary(self): return {"GID": self[Greatschools_WebData.BOUNDARY].key(), "link": self[Greatschools_WebData.BOUNDARY].link()}
+    def boundary(self): return [{"GID": self[Greatschools_WebData.BOUNDARY].key(), "link": self[Greatschools_WebData.BOUNDARY].link()}]
 
 
 class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader):
@@ -330,7 +330,7 @@ def main(*args, **kwargs):
     downloader.join()
     vpn.stop()
     vpn.join()
-    for query, results in downloader.results:
+    for query, results in downloader.results.items():
         LOGGER.info(str(query))
         LOGGER.info(str(results))
     if bool(vpn.error):
