@@ -86,7 +86,7 @@ class Greatschools_Boundary_WebDelayer(WebDelayer): pass
 class Greatschools_Boundary_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Boundary_WebQueue(WebQueue): pass
 class Greatschools_Boundary_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Boundary_WebDataset(WebDataset, fields={"shapes": "zip.shp"}): pass
+class Greatschools_Boundary_WebDataset(WebDataset, fields=["shapes.shp"]): pass
 
 
 class Greatschools_Boundary_WebScheduler(WebScheduler, fields=["GID"]):

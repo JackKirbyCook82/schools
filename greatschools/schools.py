@@ -137,7 +137,7 @@ class Greatschools_Schools_WebDelayer(WebDelayer): pass
 class Greatschools_Schools_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Schools_WebQueue(WebQueue): pass
 class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Schools_WebDataset(WebDataset, fields=["schools", "scores", "testing", "demographics", "teachers", "boundary"], extension="zip.csv"): pass
+class Greatschools_Schools_WebDataset(WebDataset, fields=["schools.csv", "scores.csv", "testing.csv", "demographics.csv", "teachers.csv", "boundary.csv"]): pass
 
 
 class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
