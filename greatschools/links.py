@@ -11,7 +11,9 @@ import os.path
 import warnings
 import logging
 import traceback
+import pandas as pd
 import regex as re
+from abc import ABC
 from datetime import date as Date
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -28,13 +30,12 @@ if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
 from utilities.iostream import InputParser
-from utilities.dataframes import dataframe_parser
-from utilities.sync import load
+from utilities.dataframes import ZIPDataframeFile
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebBrowserPage, IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin
+from webscraping.webpages import WebBrowserPage, DataframeMixin, IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin
 from webscraping.webpages import WebData, WebConditions, WebOperations
 from webscraping.weberrors import WebPageError
 from webscraping.webloaders import WebLoader
@@ -135,19 +136,19 @@ class Greatschools_Links_WebDelayer(WebDelayer): pass
 class Greatschools_Links_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Links_WebQueue(WebQueue): pass
 class Greatschools_Links_WebQuery(WebQuery, WebQueueable, fields=["dataset", "zipcode"]): pass
-class Greatschools_Links_WebDataset(WebDataset, fields=["links.csv"]): pass
+class Greatschools_Links_WebDataset(WebDataset[pd.DataFrame], ABC, fields=["links.csv"]): pass
 
 
 class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"], dataset=["school"]):
     @staticmethod
     def zipcode(*args, state, county=None, countys=[], city=None, citys=[], **kwargs):
-        dataframe = load(QUEUE_FILE)
         assert all([isinstance(item, (str, type(None))) for item in (county, city)])
         assert all([isinstance(item, list) for item in (countys, citys)])
         countys = list(set([item for item in [county, *countys] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
-        dataframe = dataframe_parser(dataframe, parsers={"zipcode": lambda x: "{:05.0f}".format(int(x))}, default=str)
-        dataframe = dataframe[["zipcode", "type", "city", "state", "county"]]
+        with ZIPDataframeFile(QUEUE_FILE, mode="r") as zipcode_file:
+            reader = zipcode_file(parsers={"zipcode": lambda x: "{:05.0f}".format(int(x))}, parser=str)
+            dataframe = reader()[["zipcode", "type", "city", "state", "county"]]
         dataframe = dataframe[dataframe["type"] == "standard"][["zipcode", "city", "state", "county"]].reset_index(drop=True)
         if citys or countys:
             dataframe = dataframe[(dataframe["city"].isin(list(citys)) | dataframe["county"].isin(list(countys)))]
@@ -177,7 +178,7 @@ class Greatschools_WebOperations(WebOperations):
     NEXT = Greatschools_NextPage_MoveToClick
 
 
-class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, GeneratorMixin, ContentMixin, WebBrowserPage,
+class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, GeneratorMixin, DataframeMixin, ContentMixin, WebBrowserPage,
                                  contents=[Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations]):
     @staticmethod
     def date(): return {"date": Date.today().strftime("%m/%d/%Y")}

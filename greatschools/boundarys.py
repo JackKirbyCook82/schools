@@ -12,6 +12,7 @@ import warnings
 import logging
 import traceback
 import json
+import pandas as pd
 import regex as re
 from abc import ABC
 from seleniumwire.utils import decode
@@ -32,8 +33,7 @@ if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
 from utilities.iostream import InputParser
-from utilities.dataframes import dataframe_parser
-from utilities.sync import load
+from utilities.dataframes import ZIPDataframeFile
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
@@ -86,21 +86,21 @@ class Greatschools_Boundary_WebDelayer(WebDelayer): pass
 class Greatschools_Boundary_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Boundary_WebQueue(WebQueue): pass
 class Greatschools_Boundary_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Boundary_WebDataset(WebDataset, fields=["shapes.shp"]): pass
+class Greatschools_Boundary_WebDataset(WebDataset[pd.DataFrame], ABC, fields=["shapes.shp"]): pass
 
 
 class Greatschools_Boundary_WebScheduler(WebScheduler, fields=["GID"]):
     @staticmethod
     def GID(*args, state, city=None, citys=[], zipcode=None, zipcodes=[], **kwargs):
-        try:
-            dataframe = load(QUEUE_FILE)
-        except FileNotFoundError:
+        if not os.path.exists(QUEUE_FILE):
             return []
         assert all([isinstance(item, (str, type(None))) for item in (zipcode, city)])
         assert all([isinstance(item, list) for item in (zipcodes, citys)])
         zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
-        dataframe = dataframe_parser(dataframe, parsers={"address": Address.fromstr}, default=str)
+        with ZIPDataframeFile(QUEUE_FILE, mode="r") as zipcode_file:
+            reader = zipcode_file(parsers={"address": Address.fromstr}, parser=str)
+            dataframe = reader()
         dataframe["city"] = dataframe["address"].apply(lambda x: x.city if x else None)
         dataframe["state"] = dataframe["address"].apply(lambda x: x.state if x else None)
         dataframe["zipcode"] = dataframe["address"].apply(lambda x: x.zipcode if x else None)
@@ -187,8 +187,9 @@ class Greatschools_Boundary_WebDownloader(WebVPNProcess, WebDownloader):
 
     @staticmethod
     def url(*args, GID, **kwargs):
-        urls = load(QUEUE_FILE)[["GID", "link"]]
-        urls["GID"] = urls["GID"].apply(str)
+        with ZIPDataframeFile(QUEUE_FILE, mode="r") as url_file:
+            reader = url_file(parser=str)
+            urls = reader()[["GID", "link"]]
         urls.set_index("GID", inplace=True)
         series = urls.squeeze(axis=1)
         url = series.get(GID)

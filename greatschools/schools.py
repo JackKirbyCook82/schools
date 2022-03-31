@@ -11,6 +11,8 @@ import os.path
 import warnings
 import logging
 import traceback
+
+import pandas as pd
 import regex as re
 from abc import ABC
 from datetime import date as Date
@@ -30,13 +32,12 @@ if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
 from utilities.iostream import InputParser
-from utilities.dataframes import dataframe_parser
-from utilities.sync import load
+from utilities.dataframes import ZIPDataframeFile
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
 from webscraping.weburl import WebURL
-from webscraping.webpages import WebBrowserPage, ContentMixin, GeneratorMixin, webpage_bypass
+from webscraping.webpages import WebBrowserPage, DataframeMixin, ContentMixin, GeneratorMixin, webpage_bypass
 from webscraping.webpages import WebData, WebActions, WebConditions
 from webscraping.weberrors import WebPageError
 from webscraping.webloaders import WebLoader
@@ -137,21 +138,21 @@ class Greatschools_Schools_WebDelayer(WebDelayer): pass
 class Greatschools_Schools_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Schools_WebQueue(WebQueue): pass
 class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Schools_WebDataset(WebDataset, fields=["schools.csv", "scores.csv", "testing.csv", "demographics.csv", "teachers.csv", "boundary.csv"]): pass
+class Greatschools_Schools_WebDataset(WebDataset[pd.DataFrame], ABC, fields=["schools.csv", "scores.csv", "testing.csv", "demographics.csv", "teachers.csv", "boundary.csv"]): pass
 
 
 class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
     @staticmethod
     def GID(*args, state, city=None, citys=[], zipcode=None, zipcodes=[], **kwargs):
-        try:
-            dataframe = load(QUEUE_FILE)
-        except FileNotFoundError:
+        if not os.path.exists(QUEUE_FILE):
             return []
         assert all([isinstance(item, (str, type(None))) for item in (zipcode, city)])
         assert all([isinstance(item, list) for item in (zipcodes, citys)])
         zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
-        dataframe = dataframe_parser(dataframe, parsers={"address": Address.fromstr}, default=str)
+        with ZIPDataframeFile(QUEUE_FILE, mode="r") as zipcode_file:
+            reader = zipcode_file(parsers={"address": Address.fromstr}, parser=str)
+            dataframe = reader()
         dataframe["city"] = dataframe["address"].apply(lambda x: x.city if x else None)
         dataframe["state"] = dataframe["address"].apply(lambda x: x.state if x else None)
         dataframe["zipcode"] = dataframe["address"].apply(lambda x: x.zipcode if x else None)
@@ -207,7 +208,7 @@ class Greatschools_WebConditions(WebConditions):
     CAPTCHA = Greatschools_Captcha
 
 
-class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, WebBrowserPage, ABC,
+class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, DataframeMixin, WebBrowserPage, ABC,
                                    contents=[Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher, Greatschools_WebActions, Greatschools_WebConditions]):
     @staticmethod
     def date(): return {"date": Date.today().strftime("%m/%d/%Y")}
@@ -309,8 +310,9 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloade
 
     @staticmethod
     def url(*args, GID, **kwargs):
-        urls = load(QUEUE_FILE)[["GID", "link"]]
-        urls["GID"] = urls["GID"].apply(str)
+        with ZIPDataframeFile(QUEUE_FILE, mode="r") as url_file:
+            reader = url_file(parser=str)
+            urls = reader()[["GID", "link"]]
         urls.set_index("GID", inplace=True)
         series = urls.squeeze(axis=1)
         url = series.get(GID)
