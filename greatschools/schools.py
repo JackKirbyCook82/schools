@@ -11,7 +11,6 @@ import os.path
 import warnings
 import logging
 import traceback
-
 import pandas as pd
 import regex as re
 from abc import ABC
@@ -24,8 +23,7 @@ RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
 SAVE_DIR = os.path.join(ROOT_DIR, "save")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
 REPORT_FILE = os.path.join(REPOSITORY_DIR, "schools.csv")
-QUEUE_FILE = os.path.join(REPOSITORY_DIR, "links.zip.csv")
-USERAGENTS_FILE = os.path.join(RESOURCE_DIR, "useragents.zip.jl")
+QUEUE_FILE = os.path.join(REPOSITORY_DIR, "links.zip")
 DRIVER_EXE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
 NORDVPN_EXE = os.path.join("C:/", "Program Files", "NordVPN", "NordVPN.exe")
 if ROOT_DIR not in sys.path:
@@ -150,9 +148,8 @@ class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
         assert all([isinstance(item, list) for item in (zipcodes, citys)])
         zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
-        with ZIPDataframeFile(QUEUE_FILE, mode="r") as zipcode_file:
-            reader = zipcode_file(parsers={"address": Address.fromstr}, parser=str)
-            dataframe = reader()
+        with ZIPDataframeFile(QUEUE_FILE, parsers={"address": Address.fromstr}, parser=str) as zipcode_file:
+            dataframe = zipcode_file.load(index=None, header=0)
         dataframe["city"] = dataframe["address"].apply(lambda x: x.city if x else None)
         dataframe["state"] = dataframe["address"].apply(lambda x: x.state if x else None)
         dataframe["zipcode"] = dataframe["address"].apply(lambda x: x.zipcode if x else None)
@@ -310,12 +307,9 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloade
 
     @staticmethod
     def url(*args, GID, **kwargs):
-        with ZIPDataframeFile(QUEUE_FILE, mode="r") as url_file:
-            reader = url_file(parser=str)
-            urls = reader()[["GID", "link"]]
-        urls.set_index("GID", inplace=True)
-        series = urls.squeeze(axis=1)
-        url = series.get(GID)
+        with ZIPDataframeFile(QUEUE_FILE, parser=str) as dataframe_file:
+            urls = dataframe_file.load(index="GID")["link"]
+        url = urls.get(GID)
         return url
 
 

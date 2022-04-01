@@ -23,7 +23,7 @@ RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
 SAVE_DIR = os.path.join(ROOT_DIR, "save")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
 REPORT_FILE = os.path.join(REPOSITORY_DIR, "links.csv")
-QUEUE_FILE = os.path.join(RESOURCE_DIR, "zipcodes.zip.csv")
+QUEUE_FILE = os.path.join(RESOURCE_DIR, "zipcodes.zip")
 DRIVER_EXE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
 NORDVPN_EXE = os.path.join("C:/", "Program Files", "NordVPN", "NordVPN.exe")
 if ROOT_DIR not in sys.path:
@@ -146,9 +146,8 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
         assert all([isinstance(item, list) for item in (countys, citys)])
         countys = list(set([item for item in [county, *countys] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
-        with ZIPDataframeFile(QUEUE_FILE, mode="r") as zipcode_file:
-            reader = zipcode_file(parsers={"zipcode": lambda x: "{:05.0f}".format(int(x))}, parser=str)
-            dataframe = reader()[["zipcode", "type", "city", "state", "county"]]
+        with ZIPDataframeFile(QUEUE_FILE, parsers={"zipcode": lambda x: "{:05.0f}".format(int(x))}, parser=str) as zipcode_file:
+            dataframe = zipcode_file.load(index=None, header=0)[["zipcode", "type", "city", "state", "county"]]
         dataframe = dataframe[dataframe["type"] == "standard"][["zipcode", "city", "state", "county"]].reset_index(drop=True)
         if citys or countys:
             dataframe = dataframe[(dataframe["city"].isin(list(citys)) | dataframe["county"].isin(list(countys)))]
