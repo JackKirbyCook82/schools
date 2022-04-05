@@ -17,6 +17,7 @@ import regex as re
 from abc import ABC
 from seleniumwire.utils import decode
 from datetime import date as Date
+from collections import OrderedDict as ODict
 
 MAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 MODULE_DIR = os.path.abspath(os.path.join(MAIN_DIR, os.pardir))
@@ -33,6 +34,7 @@ if ROOT_DIR not in sys.path:
 
 from utilities.iostream import InputParser
 from utilities.dataframes import ZIPDataframeFile
+from utilities.shapes import Shape, ShapeRecord, Geometry
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
@@ -64,6 +66,7 @@ captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"
 captcha_webloader = WebLoader(xpath=captcha_xpath, timeout=5)
 identity_pattern = "(?<=\/)\d+"
 identity_parser = lambda x: str(re.findall(identity_pattern, x)[0])
+getitem_iterator = lambda contents, key, default: (key, contents.get(key, None)) if isinstance(key, str) else (key, getitem_iterator(contents[key[0]], key[1] if len(key) == 1 else key[1:]))
 
 
 class Greatschools_Boundary_HTMLWebURL(WebURL, protocol="https", domain="www.greatschools.org"):
@@ -98,7 +101,7 @@ class Greatschools_Boundary_WebScheduler(WebScheduler, fields=["GID"]):
         zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
         with ZIPDataframeFile(QUEUE_FILE, parsers={}, parser=str) as zipcode_file:
-            dataframe = zipcode_file.load(index=None, header=0)[["zipcode", "type", "city", "state", "county"]]
+            dataframe = zipcode_file.load(index=None, header=0)
         dataframe["city"] = dataframe["address"].apply(lambda x: x.city if x else None)
         dataframe["state"] = dataframe["address"].apply(lambda x: x.state if x else None)
         dataframe["zipcode"] = dataframe["address"].apply(lambda x: x.zipcode if x else None)
@@ -137,10 +140,14 @@ class Greatschools_Boundary_WebPage(ContentMixin, WebBrowserPage, ABC, contents=
             for index, key in enumerate(responses.keys()):
                 LOGGER.error("Response URL[{}]: {}".format(index, key))
             raise ExecuteError(self)
-        content = json.loads(decode(response.body, response.headers.get('Content-Encoding', 'utf-8')))
-        values = content["boundaries"]["h"]["coordinates"][0][0][0]
-
-        return query, "shapes", file
+        contents = json.loads(decode(response.body, response.headers.get('Content-Encoding', 'utf-8')))
+        record_mapping = {"id": "GID", "districtId": "DID", "districtName": "district", "lat": "latitude", "lon": "longitude", "name": "name", "gradeLevels": "grades", "schooltype": "type"}
+        address_mapping = {"street": ["address", "street1"], "city": ["address", "city"], "zipcode": "zipcode", "state": "state"}
+        record = {key: contents.get(key, None) for key, content in record_mapping.items()}
+        record["address"] = Address(ODict([getitem_iterator(contents, content, None) for key, content in address_mapping.items()]))
+        values = [tuple(value) for value in contents["boundaries"]["h"]["coordinates"][0][0]]
+        shape = Shape[Geometry.RING](values)
+        return query, "shapes", [ShapeRecord(0, shape, record)]
 
 
 class Greatschools_Boundary_WebDownloader(WebVPNProcess, WebDownloader):
