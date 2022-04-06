@@ -159,7 +159,7 @@ class Greatschools_Boundary_WebDownloader(WebVPNProcess, WebDownloader):
                 page = Greatschools_Boundary_WebPage(driver, name="GreatSchoolsPage", delayer=delayer)
                 with queue:
                     for query in queue:
-                        if not bool(self.vpn.operational):
+                        if bool(self.vpn.terminated):
                             query.abandon()
                             self.terminate()
                         elif not bool(self.vpn.ready):
@@ -201,10 +201,10 @@ class Greatschools_Boundary_WebDownloader(WebVPNProcess, WebDownloader):
 
 def main(*args, **kwargs):
     delayer = Greatschools_Boundary_WebDelayer(name="GreatSchoolsDelayer", method="random", wait=(30, 60))
-    browser = Greatschools_Boundary_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", timeout=60, wait=15)
+    browser = Greatschools_Boundary_WebBrowser(name="GreatSchoolsBrowser", browser="chrome", timeout=60)
     scheduler = Greatschools_Boundary_WebScheduler(name="GreatSchoolsScheduler", randomize=True, size=5, file=REPORT_FILE)
-    downloader = Greatschools_Boundary_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2, wait=15)
-    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", timeout=60 * 2, wait=15)
+    downloader = Greatschools_Boundary_WebDownloader(name="GreatSchools", repository=REPOSITORY_DIR, timeout=60*2)
+    vpn = Nord_WebVPN(name="NordVPN", file=NORDVPN_EXE, server="United States", timeout=60*2)
     vpn += downloader
     downloader(*args, browser=browser, scheduler=scheduler, delayer=delayer, **kwargs)
     vpn.start()
