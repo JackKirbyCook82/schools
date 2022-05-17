@@ -262,7 +262,7 @@ class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, DataframeMixin,
         return [{**self.query(), **demographics, **self.date()}]
 
     @webpage_bypass(condition=lambda self: not bool(self[Greatschools_WebData.BOUNDARY]), value=None)
-    def boundary(self): return [{"GID": self[Greatschools_WebData.BOUNDARY].key(), "link": self[Greatschools_WebData.BOUNDARY].link()}]
+    def boundary(self): return [{"GID": self[Greatschools_WebData.BOUNDARY].key(), "address": self[Greatschools_WebData.ADDRESS].data(), "link": self[Greatschools_WebData.BOUNDARY].link()}]
 
 
 class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloader):

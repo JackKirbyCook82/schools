@@ -64,9 +64,9 @@ warnings.filterwarnings("ignore")
 
 captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"
 captcha_webloader = WebLoader(xpath=captcha_xpath, timeout=5)
-identity_pattern = "(?<=\/)\d+"
+identity_pattern = "(?<=\/)\d+|(?<=schoolId=)\d+"
 identity_parser = lambda x: str(re.findall(identity_pattern, x)[0])
-getitem_iterator = lambda contents, key, default: (key, contents.get(key, None)) if isinstance(key, str) else (key, getitem_iterator(contents[key[0]], key[1] if len(key) == 1 else key[1:]))
+getitem_iterator = lambda contents, key, default: (key, contents.get(key, None)) if isinstance(key, str) else (key, getitem_iterator(contents[key[0]], key[1] if len(key) == 1 else key[1:], default))
 
 
 class Greatschools_Boundary_HTMLWebURL(WebURL, protocol="https", domain="www.greatschools.org"):
@@ -78,7 +78,7 @@ class Greatschools_Boundary_HTMLWebURL(WebURL, protocol="https", domain="www.gre
 
 class Greatschools_Boundary_JSONWebURL(WebURL, protocol="https", domain="www.greatschools.org"):
     @staticmethod
-    def path(*args, GID, **kwargs): return ["gsr", "api", "schools", str(GID), ""]
+    def path(*args, GID, **kwargs): return ["gsr", "api", "schools", str(GID)]
     @staticmethod
     def parm(*args, state, **kwargs): return {"state": str(state), "extras": "boundaries"}
 
@@ -88,7 +88,7 @@ class Greatschools_Boundary_WebDelayer(WebDelayer): pass
 class Greatschools_Boundary_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Boundary_WebQueue(WebQueue): pass
 class Greatschools_Boundary_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Boundary_WebDataset(WebDataset[pd.DataFrame], ABC, fields=["shapes.shp"]): pass
+class Greatschools_Boundary_WebDataset(WebDataset[list], ABC, fields=["shapes.shp"]): pass
 
 
 class Greatschools_Boundary_WebScheduler(WebScheduler, fields=["GID"]):
@@ -100,7 +100,7 @@ class Greatschools_Boundary_WebScheduler(WebScheduler, fields=["GID"]):
         assert all([isinstance(item, list) for item in (zipcodes, citys)])
         zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
-        with ZIPDataframeFile(QUEUE_FILE, parsers={}, parser=str) as zipcode_file:
+        with ZIPDataframeFile(QUEUE_FILE, parsers={"address": Address.fromstr}, parser=str) as zipcode_file:
             dataframe = zipcode_file.load(index=None, header=0)
         dataframe["city"] = dataframe["address"].apply(lambda x: x.city if x else None)
         dataframe["state"] = dataframe["address"].apply(lambda x: x.state if x else None)
@@ -141,13 +141,15 @@ class Greatschools_Boundary_WebPage(ContentMixin, WebBrowserPage, ABC, contents=
                 LOGGER.error("Response URL[{}]: {}".format(index, key))
             raise ExecuteError(self)
         contents = json.loads(decode(response.body, response.headers.get('Content-Encoding', 'utf-8')))
-        record_mapping = {"id": "GID", "districtId": "DID", "districtName": "district", "lat": "latitude", "lon": "longitude", "name": "name", "gradeLevels": "grades", "schooltype": "type"}
-        address_mapping = {"street": ["address", "street1"], "city": ["address", "city"], "zipcode": "zipcode", "state": "state"}
-        record = {key: contents.get(key, None) for key, content in record_mapping.items()}
-        record["address"] = Address(ODict([getitem_iterator(contents, content, None) for key, content in address_mapping.items()]))
-        values = [tuple(value) for value in contents["boundaries"]["h"]["coordinates"][0][0]]
-        shape = Shape[Geometry.RING](values)
-        return query, "shapes", [ShapeRecord(0, shape, record)]
+        mapping = {"id": "GID", "districtId": "DID", "districtName": "district", "lat": "latitude", "lon": "longitude", "name": "name", "gradeLevels": "grades", "schooltype": "type"}
+        record = {key: contents.get(key, None) for key, content in mapping.items()}
+        record["address"] = Address(ODict([("street", contents["address"]["street1"]), ("city", contents["address"]["city"]), ("state", contents["state"]), ("zipcode", contents["address"]["zip"])]))
+        try:
+            values = [tuple(value) for value in list(contents["boundaries"].values())[0]["coordinates"][0][0]]
+            shape = Shape[Geometry.RING](values)
+            return query, "shapes", [ShapeRecord(0, shape, record)]
+        except IndexError:
+            return query, "shapes", []
 
 
 class Greatschools_Boundary_WebDownloader(WebVPNProcess, WebDownloader):
@@ -174,7 +176,8 @@ class Greatschools_Boundary_WebDownloader(WebVPNProcess, WebDownloader):
                         try:
                             page.load(str(url), referer=referer)
                             page.setup(*args, **kwargs)
-                            for fields, dataset, data in page(*args, **kwargs):
+                            fields, dataset, data = page(*args, **kwargs)
+                            if bool(data):
                                 yield Greatschools_Boundary_WebQuery(fields, name="GreatschoolsQuery"), Greatschools_Boundary_WebDataset({dataset: data}, name="GreatschoolsDataset")
                         except (WebPageError["refusal"], WebPageError["captcha"]):
                             driver.trip()
@@ -193,9 +196,8 @@ class Greatschools_Boundary_WebDownloader(WebVPNProcess, WebDownloader):
     @staticmethod
     def url(*args, GID, **kwargs):
         with ZIPDataframeFile(QUEUE_FILE, parser=str) as dataframe_file:
-            urls = dataframe_file.load(index="GID")[["GID", "link"]]
-        series = urls.squeeze(axis=1)
-        url = series.get(GID)
+            urls = dataframe_file.load(index="GID")["link"]
+        url = urls.get(GID)
         return url
 
 
@@ -228,18 +230,5 @@ if __name__ == "__main__":
     inputparser = InputParser(proxys={"assign": "=", "space": "_"}, parsers={}, default=str)
     inputparser(*sys.argv[1:])
     main(*inputparser.arguments, **inputparser.parameters)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
