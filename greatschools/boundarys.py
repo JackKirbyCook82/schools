@@ -12,7 +12,6 @@ import warnings
 import logging
 import traceback
 import json
-import pandas as pd
 import regex as re
 from abc import ABC
 from seleniumwire.utils import decode
