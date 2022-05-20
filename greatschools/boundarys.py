@@ -33,7 +33,7 @@ if ROOT_DIR not in sys.path:
 
 from utilities.iostream import InputParser
 from utilities.dataframes import ZIPDataframeFile
-from utilities.shapes import Shape, ShapeRecord, Geometry
+from utilities.shapes import Shape, ShapeRecord, Geometry, Collection
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
@@ -49,7 +49,6 @@ from webscraping.webdata import WebCaptcha
 from webscraping.webactions import StaleWebActionError, InteractionWebActionError
 from webscraping.webvariables import Address
 
-
 __version__ = "1.0.0"
 __author__ = "Jack Kirby Cook"
 __all__ = ["Greatschools_Boundary_WebDelayer", "Greatschools_Boundary_WebBrowser", "Greatschools_Boundary_WebDownloader", "Greatschools_Boundary_WebScheduler"]
@@ -59,6 +58,10 @@ __license__ = ""
 
 LOGGER = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
+
+
+QUERYS = ["GID"]
+DATASETS = {"shapes.shp": Collection[Geometry.RING]}
 
 
 captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"
@@ -86,8 +89,8 @@ class Greatschools_Captcha(WebCaptcha, loader=captcha_webloader, optional=True):
 class Greatschools_Boundary_WebDelayer(WebDelayer): pass
 class Greatschools_Boundary_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Boundary_WebQueue(WebQueue): pass
-class Greatschools_Boundary_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Boundary_WebDataset(WebDataset[list], ABC, fields=["shapes.shp"]): pass
+class Greatschools_Boundary_WebQuery(WebQuery, WebQueueable, fields=QUERYS): pass
+class Greatschools_Boundary_WebDataset(WebDataset, ABC, fields=DATASETS): pass
 
 
 class Greatschools_Boundary_WebScheduler(WebScheduler, fields=["GID"]):
@@ -146,9 +149,9 @@ class Greatschools_Boundary_WebPage(ContentMixin, WebBrowserPage, ABC, contents=
         try:
             values = [tuple(value) for value in list(contents["boundaries"].values())[0]["coordinates"][0][0]]
             shape = Shape[Geometry.RING](values)
-            return query, "shapes", [ShapeRecord(0, shape, record)]
+            return query, "shapes", Collection[Geometry.RING](ShapeRecord(0, shape, record))
         except IndexError:
-            return query, "shapes", []
+            return query, "shapes", None
 
 
 class Greatschools_Boundary_WebDownloader(WebVPNProcess, WebDownloader):

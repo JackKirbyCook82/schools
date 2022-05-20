@@ -57,6 +57,10 @@ LOGGER = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
 
 
+QUERYS = ["dataset", "zipcode"]
+DATASETS = {"links.csv": pd.DataFrame}
+
+
 captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"
 badrequest_xpath = r"//span[@class='heading' and contains(text(), 'Your search did not return any schools')]"
 zipcode_xpath = r"//div[@class='pagination-summary']"
@@ -135,8 +139,8 @@ class Greatschools_Links_WebURL(WebURL, protocol="https", domain="www.greatschoo
 class Greatschools_Links_WebDelayer(WebDelayer): pass
 class Greatschools_Links_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Links_WebQueue(WebQueue): pass
-class Greatschools_Links_WebQuery(WebQuery, WebQueueable, fields=["dataset", "zipcode"]): pass
-class Greatschools_Links_WebDataset(WebDataset[pd.DataFrame], ABC, fields=["links.csv"]): pass
+class Greatschools_Links_WebQuery(WebQuery, WebQueueable, fields=QUERYS): pass
+class Greatschools_Links_WebDataset(WebDataset, ABC, fields=DATASETS): pass
 
 
 class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"], dataset=["school"]):

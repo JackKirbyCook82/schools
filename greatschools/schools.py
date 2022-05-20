@@ -57,6 +57,10 @@ LOGGER = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
 
 
+QUERYS = ["GID"]
+DATASETS = {key: pd.DataFrame for key in ("schools.csv", "scores.csv", "testing.csv", "demographics.csv", "teachers.csv", "boundary.csv")}
+
+
 captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"
 address_xpath = r"//div[contains(@class, 'address')]//div[@class='content']"
 filtration_xpath = r"//div[@class='community-breadcrumbs']//span[not(contains(@class, 'divider')) and not(./span)]"
@@ -135,8 +139,8 @@ class Greatschools_Schools_WebURL(WebURL, protocol="https", domain="www.greatsch
 class Greatschools_Schools_WebDelayer(WebDelayer): pass
 class Greatschools_Schools_WebBrowser(WebBrowser, files={"chrome": DRIVER_EXE}, options={"headless": False, "images": True, "incognito": False}): pass
 class Greatschools_Schools_WebQueue(WebQueue): pass
-class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=["GID"]): pass
-class Greatschools_Schools_WebDataset(WebDataset[pd.DataFrame], ABC, fields=["schools.csv", "scores.csv", "testing.csv", "demographics.csv", "teachers.csv", "boundary.csv"]): pass
+class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=QUERYS): pass
+class Greatschools_Schools_WebDataset(WebDataset, ABC, fields=DATASETS): pass
 
 
 class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
