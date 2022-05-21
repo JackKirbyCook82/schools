@@ -58,7 +58,7 @@ warnings.filterwarnings("ignore")
 
 
 QUERYS = ["GID"]
-DATASETS = {key: pd.DataFrame for key in ("schools.csv", "scores.csv", "testing.csv", "demographics.csv", "teachers.csv", "boundary.csv")}
+DATASETS = [".".join([key, "csv"]) for key in ("schools", "scores", "testing", "demographics", "teachers", "boundary")]
 
 
 captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"

@@ -33,7 +33,7 @@ if ROOT_DIR not in sys.path:
 
 from utilities.iostream import InputParser
 from utilities.dataframes import ZIPDataframeFile
-from utilities.shapes import Shape, ShapeRecord, Geometry, Collection
+from utilities.shapes import Shape, ShapeRecord, Geometry
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
@@ -61,7 +61,7 @@ warnings.filterwarnings("ignore")
 
 
 QUERYS = ["GID"]
-DATASETS = {"shapes.shp": Collection[Geometry.RING]}
+DATASETS = ["shapes.shp"]
 
 
 captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"

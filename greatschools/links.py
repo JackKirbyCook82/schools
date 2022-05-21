@@ -58,7 +58,7 @@ warnings.filterwarnings("ignore")
 
 
 QUERYS = ["dataset", "zipcode"]
-DATASETS = {"links.csv": pd.DataFrame}
+DATASETS = ["links.csv"]
 
 
 captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"
