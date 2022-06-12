@@ -11,7 +11,6 @@ import os.path
 import warnings
 import logging
 import traceback
-import pandas as pd
 import regex as re
 from abc import ABC
 from datetime import date as Date
