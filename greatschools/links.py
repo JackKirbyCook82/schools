@@ -28,8 +28,7 @@ NORDVPN_EXE = os.path.join("C:/", "Program Files", "NordVPN", "NordVPN.exe")
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from utilities.iostream import InputParser
-from utilities.dataframes import ZIPDataframeFile
+from utilities.inputs import InputParser
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
