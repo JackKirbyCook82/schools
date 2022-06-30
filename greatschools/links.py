@@ -29,6 +29,7 @@ if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
 from utilities.inputs import InputParser
+from files.dataframes import DataframeFile
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
@@ -148,8 +149,10 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
         assert all([isinstance(item, list) for item in (countys, citys)])
         countys = list(set([item for item in [county, *countys] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
-        with ZIPDataframeFile(QUEUE_FILE, parsers={"zipcode": lambda x: "{:05.0f}".format(int(x))}, parser=str) as zipcode_file:
-            dataframe = zipcode_file.load(index=None, header=0)[["zipcode", "type", "city", "state", "county"]]
+        parsers = {"zipcode": lambda x: "{:05.0f}".format(int(x))}
+        with DataframeFile(file=QUEUE_FILE, mode="r", index=False, header=True, parsers=parsers, parser=str) as reader:
+            record = reader()
+            dataframe = record(columns=["zipcode", "type", "city", "state", "county"])
         dataframe = dataframe[dataframe["type"] == "standard"][["zipcode", "city", "state", "county"]].reset_index(drop=True)
         if citys or countys:
             dataframe = dataframe[(dataframe["city"].isin(list(citys)) | dataframe["county"].isin(list(countys)))]

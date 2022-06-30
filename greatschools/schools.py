@@ -29,6 +29,7 @@ if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
 from utilities.inputs import InputParser
+from files.dataframes import DataframeFile
 from webscraping.webtimers import WebDelayer
 from webscraping.webvpn import Nord_WebVPN, WebVPNProcess
 from webscraping.webdrivers import WebBrowser
@@ -150,8 +151,10 @@ class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
         assert all([isinstance(item, list) for item in (zipcodes, citys)])
         zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
-        with ZIPDataframeFile(QUEUE_FILE, parsers={"address": Address.fromstr}, parser=str) as zipcode_file:
-            dataframe = zipcode_file.load(index=None, header=0)
+        parsers = {"address": Address.fromstr}
+        with DataframeFile(file=QUEUE_FILE, mode="r", index=False, header=True, parsers=parsers, parser=str) as reader:
+            record = reader()
+            dataframe = record(columns=["zipcode", "type", "city", "state", "county"])
         dataframe["city"] = dataframe["address"].apply(lambda x: x.city if x else None)
         dataframe["state"] = dataframe["address"].apply(lambda x: x.state if x else None)
         dataframe["zipcode"] = dataframe["address"].apply(lambda x: x.zipcode if x else None)
@@ -309,8 +312,9 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloade
 
     @staticmethod
     def url(*args, GID, **kwargs):
-        with ZIPDataframeFile(QUEUE_FILE, parser=str) as dataframe_file:
-            urls = dataframe_file.load(index="GID")["link"]
+        with DataframeFile(file=QUEUE_FILE, index=False, header=True, parsers={}, parser=str) as reader:
+            record = reader()
+            urls = record(index="GID", columns="link").squeeze()
         url = urls.get(GID)
         return url
 
