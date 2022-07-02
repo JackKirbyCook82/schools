@@ -153,8 +153,7 @@ class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
         citys = list(set([item for item in [city, *citys] if item]))
         parsers = {"address": Address.fromstr}
         with DataframeFile(file=QUEUE_FILE, mode="r", index=False, header=True, parsers=parsers, parser=str) as reader:
-            record = reader()
-            dataframe = record(columns=["zipcode", "type", "city", "state", "county"])
+            dataframe = reader(header=["zipcode", "type", "city", "state", "county"])
         dataframe["city"] = dataframe["address"].apply(lambda x: x.city if x else None)
         dataframe["state"] = dataframe["address"].apply(lambda x: x.state if x else None)
         dataframe["zipcode"] = dataframe["address"].apply(lambda x: x.zipcode if x else None)
@@ -312,9 +311,9 @@ class Greatschools_Schools_WebDownloader(CacheMixin, WebVPNProcess, WebDownloade
 
     @staticmethod
     def url(*args, GID, **kwargs):
-        with DataframeFile(file=QUEUE_FILE, index=False, header=True, parsers={}, parser=str) as reader:
+        with DataframeFile(file=QUEUE_FILE, mode="r", index=False, header=True, parsers={}, parser=str) as reader:
             record = reader()
-            urls = record(index="GID", columns="link").squeeze()
+            urls = record(index="GID", header="link").squeeze()
         url = urls.get(GID)
         return url
 

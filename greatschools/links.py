@@ -151,8 +151,7 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
         citys = list(set([item for item in [city, *citys] if item]))
         parsers = {"zipcode": lambda x: "{:05.0f}".format(int(x))}
         with DataframeFile(file=QUEUE_FILE, mode="r", index=False, header=True, parsers=parsers, parser=str) as reader:
-            record = reader()
-            dataframe = record(columns=["zipcode", "type", "city", "state", "county"])
+            dataframe = reader(header=["zipcode", "type", "city", "state", "county"])
         dataframe = dataframe[dataframe["type"] == "standard"][["zipcode", "city", "state", "county"]].reset_index(drop=True)
         if citys or countys:
             dataframe = dataframe[(dataframe["city"].isin(list(citys)) | dataframe["county"].isin(list(countys)))]
