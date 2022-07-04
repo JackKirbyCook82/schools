@@ -22,7 +22,7 @@ RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
 SAVE_DIR = os.path.join(ROOT_DIR, "save")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
 REPORT_FILE = os.path.join(REPOSITORY_DIR, "links.csv")
-QUEUE_FILE = os.path.join(RESOURCE_DIR, "zipcodes.zip")
+QUEUE_FILE = os.path.join(RESOURCE_DIR, "zipcodes.csv")
 DRIVER_EXE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
 NORDVPN_EXE = os.path.join("C:/", "Program Files", "NordVPN", "NordVPN.exe")
 if ROOT_DIR not in sys.path:
@@ -150,7 +150,7 @@ class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"
         countys = list(set([item for item in [county, *countys] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
         parsers = {"zipcode": lambda x: "{:05.0f}".format(int(x))}
-        with DataframeFile(file=QUEUE_FILE, mode="r", index=False, header=True, parsers=parsers, parser=str) as reader:
+        with DataframeFile(file=QUEUE_FILE, mode="r", parsers=parsers, parser=str) as reader:
             dataframe = reader(header=["zipcode", "type", "city", "state", "county"])
         dataframe = dataframe[dataframe["type"] == "standard"][["zipcode", "city", "state", "county"]].reset_index(drop=True)
         if citys or countys:
@@ -181,8 +181,11 @@ class Greatschools_WebOperations(WebOperations):
     NEXT = Greatschools_NextPage_MoveToClick
 
 
-class Greatschools_Links_WebPage(IterationMixin, PaginationMixin, GeneratorMixin, DataframeMixin, ContentMixin, WebBrowserPage,
-                                 contents=[Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations]):
+page_mixins = (IterationMixin, PaginationMixin, GeneratorMixin, DataframeMixin, ContentMixin,)
+page_contents = (Greatschools_WebData, Greatschools_WebConditions, Greatschools_WebOperations,)
+
+
+class Greatschools_Links_WebPage(WebBrowserPage, mixins=page_mixins, contents=page_contents):
     @staticmethod
     def date(): return {"date": Date.today().strftime("%m/%d/%Y")}
     def query(self): return {"dataset": "school", "zipcode": str(self[Greatschools_WebData.ZIPCODE].data())}

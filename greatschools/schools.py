@@ -22,7 +22,7 @@ RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
 SAVE_DIR = os.path.join(ROOT_DIR, "save")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
 REPORT_FILE = os.path.join(REPOSITORY_DIR, "schools.csv")
-QUEUE_FILE = os.path.join(REPOSITORY_DIR, "links.zip")
+QUEUE_FILE = os.path.join(REPOSITORY_DIR, "links.csv")
 DRIVER_EXE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
 NORDVPN_EXE = os.path.join("C:/", "Program Files", "NordVPN", "NordVPN.exe")
 if ROOT_DIR not in sys.path:
@@ -152,7 +152,7 @@ class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
         zipcodes = list(set([item for item in [zipcode, *zipcodes] if item]))
         citys = list(set([item for item in [city, *citys] if item]))
         parsers = {"address": Address.fromstr}
-        with DataframeFile(file=QUEUE_FILE, mode="r", index=False, header=True, parsers=parsers, parser=str) as reader:
+        with DataframeFile(file=QUEUE_FILE, mode="r", parsers=parsers, parser=str) as reader:
             dataframe = reader(header=["zipcode", "type", "city", "state", "county"])
         dataframe["city"] = dataframe["address"].apply(lambda x: x.city if x else None)
         dataframe["state"] = dataframe["address"].apply(lambda x: x.state if x else None)
@@ -209,8 +209,11 @@ class Greatschools_WebConditions(WebConditions):
     CAPTCHA = Greatschools_Captcha
 
 
-class Greatschools_Schools_WebPage(GeneratorMixin, ContentMixin, DataframeMixin, WebBrowserPage, ABC,
-                                   contents=[Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher, Greatschools_WebActions, Greatschools_WebConditions]):
+page_mixins = (GeneratorMixin, DataframeMixin, ContentMixin)
+page_contents = (Greatschools_WebData, Greatschools_WebScore, Greatschools_WebTest, Greatschools_WebDemographic, Greatschools_WebTeacher, Greatschools_WebActions, Greatschools_WebConditions,)
+
+
+class Greatschools_Schools_WebPage(WebBrowserPage, mixins=page_mixins, contents=page_contents):
     @staticmethod
     def date(): return {"date": Date.today().strftime("%m/%d/%Y")}
     def query(self): return {"GID": str(identity_parser(self.url))}
