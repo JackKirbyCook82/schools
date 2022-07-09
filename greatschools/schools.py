@@ -22,7 +22,7 @@ RESOURCE_DIR = os.path.join(ROOT_DIR, "resources")
 SAVE_DIR = os.path.join(ROOT_DIR, "save")
 REPOSITORY_DIR = os.path.join(SAVE_DIR, "greatschools")
 REPORT_FILE = os.path.join(REPOSITORY_DIR, "schools.csv")
-QUEUE_FILE = os.path.join(REPOSITORY_DIR, "links.csv")
+QUEUE_FILE = os.path.join(REPOSITORY_DIR, "links.zip")
 DRIVER_EXE = os.path.join(RESOURCE_DIR, "chromedriver.exe")
 NORDVPN_EXE = os.path.join("C:/", "Program Files", "NordVPN", "NordVPN.exe")
 if ROOT_DIR not in sys.path:
@@ -57,7 +57,7 @@ warnings.filterwarnings("ignore")
 
 
 QUERYS = ["GID"]
-DATASETS = [".".join([key, "csv"]) for key in ("schools", "scores", "testing", "demographics", "teachers", "boundary")]
+DATASETS = [".".join([key, "zip"]) for key in ("schools", "scores", "testing", "demographics", "teachers", "boundary")]
 
 
 captcha_xpath = r"//*[contains(@class, 'Captcha') or contains(@id, 'Captcha')]"
