@@ -142,7 +142,7 @@ class Greatschools_Schools_WebQuery(WebQuery, WebQueueable, fields=QUERYS): pass
 class Greatschools_Schools_WebDataset(WebDataset, ABC, fields=DATASETS): pass
 
 
-class Greatschools_Schools_WebScheduler(WebScheduler, fields=["GID"]):
+class Greatschools_Schools_WebScheduler(WebScheduler, fields=QUERYS):
     @staticmethod
     def GID(*args, state, city=None, citys=[], zipcode=None, zipcodes=[], **kwargs):
         if not os.path.exists(QUEUE_FILE):

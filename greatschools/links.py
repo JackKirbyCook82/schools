@@ -142,7 +142,7 @@ class Greatschools_Links_WebQuery(WebQuery, WebQueueable, fields=QUERYS): pass
 class Greatschools_Links_WebDataset(WebDataset, ABC, fields=DATASETS): pass
 
 
-class Greatschools_Links_WebScheduler(WebScheduler, fields=["dataset", "zipcode"], dataset=["school"]):
+class Greatschools_Links_WebScheduler(WebScheduler, fields=QUERYS, dataset=["school"]):
     @staticmethod
     def zipcode(*args, state, county=None, countys=[], city=None, citys=[], **kwargs):
         assert all([isinstance(item, (str, type(None))) for item in (county, city)])

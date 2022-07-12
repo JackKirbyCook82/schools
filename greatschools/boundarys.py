@@ -94,7 +94,7 @@ class Greatschools_Boundary_WebQuery(WebQuery, WebQueueable, fields=QUERYS): pas
 class Greatschools_Boundary_WebDataset(WebDataset, ABC, fields=DATASETS): pass
 
 
-class Greatschools_Boundary_WebScheduler(WebScheduler, fields=["GID"]):
+class Greatschools_Boundary_WebScheduler(WebScheduler, fields=QUERYS):
     @staticmethod
     def GID(*args, state, city=None, citys=[], zipcode=None, zipcodes=[], **kwargs):
         if not os.path.exists(QUEUE_FILE):
